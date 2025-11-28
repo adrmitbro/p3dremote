@@ -1459,6 +1459,7 @@ function updateAutopilotStatus(data) {
 const navGpsStatus = document.getElementById('apNavGpsStatus');
 navGpsStatus.classList.add('active');
 navGpsStatus.textContent = data.navMode ? 'GPS' : 'NAV';
+}
 
         function updateStatusBadge(id, isActive) {
             const badge = document.getElementById(id);
@@ -3091,10 +3092,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
 
 
 
