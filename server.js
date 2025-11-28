@@ -1455,15 +1455,9 @@ function updateAutopilotStatus(data) {
     updateStatusBadge('apAppStatus', data.approach);
     updateStatusBadge('autoThrottleStatus', data.throttle);
     
-// Update NAV/GPS status - blue when GPS mode, grey when NAV mode
+// Update NAV/GPS status - always active, shows current mode
 const navGpsStatus = document.getElementById('apNavGpsStatus');
-if (data.navMode) {
-    // GPS mode is ON - show blue
-    navGpsStatus.classList.add('active');
-} else {
-    // NAV mode is ON - show grey
-    navGpsStatus.classList.remove('active');
-}
+navGpsStatus.classList.add('active');
 navGpsStatus.textContent = data.navMode ? 'GPS' : 'NAV';
 
         function updateStatusBadge(id, isActive) {
@@ -3097,6 +3091,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
