@@ -1449,7 +1449,6 @@ function updateAutopilotStatus(data) {
     updateStatusBadge('apMasterStatus', data.master);
     updateStatusBadge('apAltStatus', data.altitude);
     updateStatusBadge('apHdgStatus', data.heading);
-    updateStatusBadge('apVSStatus', data.vs);
     updateStatusBadge('apSpeedStatus', data.speed);
     updateStatusBadge('apLocStatus', data.nav);
     updateStatusBadge('apAppStatus', data.approach);
@@ -3092,6 +3091,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
