@@ -1319,9 +1319,9 @@ function updateAutopilotUI(data) {
             spoilersBtn.className = 'toggle-btn ' + (spoilersActive ? 'on' : 'off');
             spoilersBtn.textContent = spoilersActive ? 'EXTENDED' : 'RETRACTED';
             
-            const navBtn = document.getElementById('navMode');
-            navBtn.textContent = data.navMode ? 'GPS' : 'NAV';
-            navBtn.className = 'toggle-btn ' + (data.navMode ? 'on' : 'off');
+const navBtn = document.getElementById('navMode');
+navBtn.textContent = data.navMode ? 'GPS' : 'NAV';
+navBtn.className = 'toggle-btn ' + (data.navMode ? 'on' : 'off');
             
             updateToggle('lightStrobe', data.lightStrobe);
             updateToggle('lightPanel', data.lightPanel);
@@ -1458,13 +1458,13 @@ function updateAutopilotStatus(data) {
 // Update NAV/GPS status - blue when GPS mode, grey when NAV mode
 const navGpsStatus = document.getElementById('apNavGpsStatus');
 if (data.navMode) {
-    // GPS mode is ON - show blue
+    // GPS mode (navMode=true) - show "GPS" in blue
     navGpsStatus.classList.add('active');
+    navGpsStatus.textContent = 'GPS';
 } else {
-    // NAV mode is ON - show grey
+    // NAV mode (navMode=false) - show "NAV" in grey
     navGpsStatus.classList.remove('active');
-}
-navGpsStatus.textContent = data.navMode ? 'GPS' : 'NAV';
+    navGpsStatus.textContent = 'NAV';
 }
 
         function updateStatusBadge(id, isActive) {
@@ -3098,6 +3098,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
