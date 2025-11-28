@@ -1220,9 +1220,10 @@ case 'auth_failed':
                     updateFlightData(data.data);
                     break;
                     
-                case 'autopilot_state':
-                    updateAutopilotUI(data.data);
-                    break;
+case 'autopilot_state':
+    console.log('Received autopilot_state:', data.data);
+    updateAutopilotUI(data.data);
+    break;
                     
                 case 'ai_traffic':
                     aiAircraft = data.data;
@@ -3091,6 +3092,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
