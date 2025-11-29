@@ -1107,7 +1107,7 @@ function getMobileAppHTML() {
         let followUser = false;
         let mapDragStart = null;
         let isDragging = false;
-        let showAircraftLabels = true;
+        let showAircraftLabels = false;
         let uniqueId = null;
         let hasControl = false;
         let isPaused = false;
@@ -1518,6 +1518,7 @@ function updateAutopilotStatus(data) {
             }).addTo(map);
 
             document.getElementById('followUserBtn').textContent = followUser ? 'Following' : 'Follow Aircraft';
+            document.getElementById('toggleLabelsBtn').textContent = showAircraftLabels ? 'Hide Labels' : 'Show Labels';
             
             map.on('mousedown', function(e) {
                 if (e.originalEvent.button === 0) {
@@ -3092,6 +3093,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
