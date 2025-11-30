@@ -11,8 +11,6 @@ const PORT = process.env.PORT || 3000;
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword }
 const sessions = new Map();
-// Track multiplayer positions
-const onlinePilots = new Map(); // uniqueId -> pilot data
 
 app.use(express.static('public'));
 
@@ -39,59 +37,10 @@ if (data.type === 'register_pc') {
   const uniqueId = data.uniqueId;
   const password = data.password;
   const guestPassword = data.guestPassword;
-  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false;
+  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false; // default to true for backwards compatibility
   
   ws.uniqueId = uniqueId;
   ws.clientType = 'pc';
-
-  // Initialize pilot position tracking
-  if (!onlinePilots.has(uniqueId)) {
-    onlinePilots.set(uniqueId, {
-      uniqueId: uniqueId,
-      callsign: '',
-      latitude: 0,
-      longitude: 0,
-      altitude: 0,
-      heading: 0,
-      groundSpeed: 0,
-      aircraft: '',
-      lastUpdate: Date.now()
-    });
-  }
-  
-  ws.send(JSON.stringify({ type: 'registered', uniqueId }));
-  console.log(`PC registered: ${uniqueId}`);
-}
-
-else if (data.type === 'mp_position') {
-  // Update pilot position
-  const pilotData = {
-    uniqueId: data.uniqueId,
-    callsign: data.callsign || data.uniqueId,
-    latitude: data.latitude,
-    longitude: data.longitude,
-    altitude: data.altitude,
-    heading: data.heading,
-    groundSpeed: data.groundSpeed,
-    aircraft: data.aircraft || 'Unknown',
-    lastUpdate: Date.now()
-  };
-  onlinePilots.set(data.uniqueId, pilotData);
-}
-
-else if (data.type === 'request_multiplayer') {
-  // Send list of all online pilots to requesting mobile client
-  const pilots = Array.from(onlinePilots.values())
-    .filter(p => Date.now() - p.lastUpdate < 30000)
-    .filter(p => p.uniqueId !== ws.uniqueId);
-  
-  if (ws.clientType === 'mobile') {
-    ws.send(JSON.stringify({
-      type: 'multiplayer_data',
-      data: pilots
-    }));
-  }
-}
   
   if (!sessions.has(uniqueId)) {
     sessions.set(uniqueId, {
@@ -101,7 +50,7 @@ else if (data.type === 'request_multiplayer') {
       guestPassword: guestPassword,
       isGuestPasswordEnabled: isGuestPasswordEnabled
     });
-  } else {
+} else {
     const session = sessions.get(uniqueId);
     session.pcClient = ws;
     session.password = password;
@@ -186,8 +135,7 @@ else if (data.type === 'request_control') {
               data.type === 'change_flaps' ||
               data.type === 'throttle_control' ||
               data.type.includes('toggle_light') || 
-              data.type.includes('toggle_cabin') ||
-              data.type === 'camera_view') { // Added camera to restricted commands
+              data.type.includes('toggle_cabin')) {
             if (!ws.hasControlAccess) {
               ws.send(JSON.stringify({ 
                 type: 'control_required',
@@ -225,9 +173,6 @@ else if (data.type === 'request_control') {
         console.log(`PC disconnected: ${ws.uniqueId}`);
         session.pcClient = null;
         
-        // Remove from online pilots
-        onlinePilots.delete(ws.uniqueId);
-        
         // Notify mobile clients
         session.mobileClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -242,16 +187,6 @@ else if (data.type === 'request_control') {
     }
   });
 });
-
-// Cleanup old pilots every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [uniqueId, pilot] of onlinePilots.entries()) {
-    if (now - pilot.lastUpdate > 60000) { // 1 minute timeout
-      onlinePilots.delete(uniqueId);
-    }
-  }
-}, 60000);
 
 function getMobileAppHTML() {
   return `<!DOCTYPE html>
@@ -272,126 +207,6 @@ function getMobileAppHTML() {
             color: white;
             overflow-x: hidden;
         }
-// Add to the <style> section:
-.weather-container {
-    background: #0d0d0d;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-}
-
-.weather-row {
-    display: flex;
-    justify-content: space-around;
-    margin: 5px 0;
-    font-size: 13px;
-    color: #ccc;
-}
-
-.stats-container {
-    background: #0d0d0d;
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-}
-
-.stats-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-.stat-item {
-    flex: 1;
-    background: #1a1a1a;
-    padding: 10px;
-    border-radius: 6px;
-    text-align: center;
-}
-
-.stat-label {
-    display: block;
-    font-size: 10px;
-    color: #888;
-    margin-bottom: 5px;
-    text-transform: uppercase;
-}
-
-.stat-value {
-    display: block;
-    font-size: 18px;
-    color: #167fac;
-    font-weight: bold;
-}
-
-.stat-value.recording {
-    color: #ff0000;
-    animation: pulse 2s infinite;
-}
-
-.stats-bottom {
-    text-align: center;
-    padding-top: 8px;
-    border-top: 1px solid #222;
-    font-size: 12px;
-    color: #888;
-}
-
-.camera-controls {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 10px;
-}
-
-.camera-btn {
-    padding: 10px;
-    background: #0d0d0d;
-    border: 1px solid #333;
-    border-radius: 8px;
-    color: #167fac;
-    font-size: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s;
-}
-
-.camera-btn:active {
-    background: #167fac;
-    color: #fff;
-}
-
-.airport-marker {
-    background: rgba(255, 165, 0, 0.8);
-    color: #000;
-    padding: 2px 6px;
-    border-radius: 3px;
-    font-size: 10px;
-    font-weight: bold;
-    border: 1px solid #000;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes fadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(50px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.5; }
-}
-        
         .header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             padding: 15px 20px;
@@ -940,26 +755,10 @@ function getMobileAppHTML() {
     <button class='tab' onclick='switchTab(1)'>Map</button>
     <button class='tab' onclick='switchTab(2)'>Instruments</button>
     <button class='tab' onclick='switchTab(3)'>Autopilot</button>
-    <button class='tab' onclick='switchTab(4)'>Stats</button>
 </div>
 
 <!-- Flight Tab -->
 <div class='tab-content active'>
-    <!-- Weather Card -->
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Weather</h3>
-        <div id='weatherInfo' class='weather-container'>
-            <div class='weather-row'>
-                <span>🌡️ --°C</span>
-                <span>🎚️ ---- mb</span>
-            </div>
-            <div class='weather-row'>
-                <span>💨 --kt @ ---°</span>
-                <span>👁️ -- mi</span>
-            </div>
-        </div>
-    </div>
-
     <div class='card'>
         <div class='data-label'>Next Waypoint</div>
         <div class='data-value' style='font-size: 18px;' id='nextWaypoint'>--</div>
@@ -1011,13 +810,6 @@ function getMobileAppHTML() {
                 <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
             </div>
             <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
-        </div>
-<div class='map-controls-row'>
-    <div class='map-buttons'>
-        <button id='toggleMultiplayerBtn' class='btn btn-secondary' onclick='toggleMultiplayer()'>Show Players</button>
-        <button id='toggleAirportsBtn' class='btn btn-secondary' onclick='toggleAirports()'>Show Airports</button>
-    </div>
-</div>
         </div>
     </div>
     
@@ -1332,397 +1124,24 @@ let eicasCanvas = null;
 let eicasCtx = null;
 let eicasPage = 0;
 let numEngines = 2;
-// Add new global variables at the top
-let weatherData = {};
-let flightStats = {};
-let landingStats = null;
-let multiplayerPilots = [];
-let flightHistory = [];
-let showMultiplayer = false;
-
-// Add new message handlers in handleMessage():
-function handleMessage(data) {
-    switch(data.type) {
-        // ... existing cases ...
-        
-case 'weather_data':
-    weatherData = data.data;
-    updateWeatherDisplay();
-    break;
-    
-case 'flight_stats':
-    flightStats = data.data;
-    updateFlightStatsDisplay();
-    break;
-    
-case 'landing_stats':
-    landingStats = data.data;
-    showLandingPopup();
-    break;
-    
-case 'multiplayer_data':
-    multiplayerPilots = data.data;
-    updateMultiplayerMarkers();
-    break;
-    
-case 'flight_history':
-    flightHistory = data.data;
-    displayFlightHistory();
-    break;
-    }
-}
-
-<!-- Stats Tab -->
-<div class='tab-content'>
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Current Flight</h3>
-        <div id='flightStatsInfo' class='stats-container'>
-            <div class='stats-row'>
-                <div class='stat-item'>
-                    <span class='stat-label'>Flight Time</span>
-                    <span class='stat-value'>0.0 min</span>
-                </div>
-                <div class='stat-item'>
-                    <span class='stat-label'>Max Alt</span>
-                    <span class='stat-value'>0 ft</span>
-                </div>
-            </div>
-            <div class='stats-row'>
-                <div class='stat-item'>
-                    <span class='stat-label'>Max Speed</span>
-                    <span class='stat-value'>0 kts</span>
-                </div>
-                <div class='stat-item'>
-                    <span class='stat-label'>Total Flights</span>
-                    <span class='stat-value'>0</span>
-                </div>
-            </div>
-            <div class='stats-bottom'>
-                <span>Total Hours: 0.0h</span>
-            </div>
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Flight History</h3>
-        <button class='btn btn-primary' onclick='showFlightHistory()'>View All Flights</button>
-        <div style='margin-top: 10px; color: #888; font-size: 12px; text-align: center;'>
-            Track your flights and landing performance
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Camera Controls</h3>
-        <div class='camera-controls'>
-            <button class='camera-btn' onclick='changeView("cockpit")'>🪟<br>Cockpit</button>
-            <button class='camera-btn' onclick='changeView("external")'>✈️<br>External</button>
-            <button class='camera-btn' onclick='changeView("tower")'>🗼<br>Tower</button>
-            <button class='camera-btn' onclick='changeView("prev")'>◀<br>Previous</button>
-            <button class='camera-btn' onclick='changeView("next")'>▶<br>Next</button>
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Landing Performance</h3>
-        <div style='color: #888; font-size: 13px; text-align: center; padding: 20px;'>
-            Your last landing stats will appear here after touchdown
-        </div>
-    </div>
-</div>
-
-// Add Weather Display function
-function updateWeatherDisplay() {
-    const weatherContainer = document.getElementById('weatherInfo');
-    if (!weatherContainer) return;
-    
-    const temp = weatherData.temperature ? Math.round(weatherData.temperature) : '--';
-    const pressure = weatherData.pressure ? Math.round(weatherData.pressure) : '----';
-    const windSpeed = weatherData.windSpeed ? Math.round(weatherData.windSpeed) : '--';
-    const windDir = weatherData.windDirection ? Math.round(weatherData.windDirection) : '---';
-    const visibility = weatherData.visibility ? weatherData.visibility.toFixed(1) : '--';
-    
-    weatherContainer.innerHTML = `
-        <div class="weather-row">
-            <span>🌡️ ${temp}°C</span>
-            <span>🎚️ ${pressure} mb</span>
-        </div>
-        <div class="weather-row">
-            <span>💨 ${windSpeed}kt @ ${windDir}°</span>
-            <span>👁️ ${visibility} mi</span>
-        </div>
-    `;
-}
-
-// Add Flight Stats Display
-function updateFlightStatsDisplay() {
-    const statsContainer = document.getElementById('flightStatsInfo');
-    if (!statsContainer) return;
-    
-    const isLogging = flightStats.isLogging;
-    const flightTime = flightStats.flightTime ? flightStats.flightTime.toFixed(1) : '0.0';
-    const maxAlt = flightStats.maxAltitude ? Math.round(flightStats.maxAltitude).toLocaleString() : '0';
-    const maxSpeed = flightStats.maxSpeed ? Math.round(flightStats.maxSpeed) : '0';
-    const totalFlights = flightStats.totalFlights || 0;
-    const totalHours = flightStats.totalHours ? flightStats.totalHours.toFixed(1) : '0.0';
-    
-    statsContainer.innerHTML = `
-        <div class="stats-row">
-            <div class="stat-item">
-                <span class="stat-label">Current Flight</span>
-                <span class="stat-value ${isLogging ? 'recording' : ''}">${isLogging ? '🔴 ' : ''}${flightTime} min</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Max Alt</span>
-                <span class="stat-value">${maxAlt} ft</span>
-            </div>
-        </div>
-        <div class="stats-row">
-            <div class="stat-item">
-                <span class="stat-label">Max Speed</span>
-                <span class="stat-value">${maxSpeed} kts</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Total Flights</span>
-                <span class="stat-value">${totalFlights}</span>
-            </div>
-        </div>
-        <div class="stats-bottom">
-            <span>Total Hours: ${totalHours}h</span>
-        </div>
-    `;
-}
-
-// Add Landing Stats Popup
-function showLandingPopup() {
-    const overlay = document.createElement('div');
-    overlay.id = 'landingPopup';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: fadeIn 0.3s;';
-    
-    const vs = Math.abs(Math.round(landingStats.verticalSpeed));
-    const speed = Math.round(landingStats.speed);
-    const gForce = landingStats.gForce.toFixed(2);
-    const grade = landingStats.grade;
-    
-    let gradeColor = '#00ff00';
-    let gradeEmoji = '🟢';
-    if (grade === 'SMOOTH') { gradeColor = '#4CAF50'; gradeEmoji = '🟢'; }
-    else if (grade === 'FIRM') { gradeColor = '#ff8800'; gradeEmoji = '🟡'; }
-    else if (grade === 'HARD') { gradeColor = '#ff0000'; gradeEmoji = '🔴'; }
-    else if (grade === 'CRASH') { gradeColor = '#8B0000'; gradeEmoji = '💥'; }
-    else if (grade === 'BUTTER') { gradeColor = '#FFD700'; gradeEmoji = '⭐'; }
-    
-    overlay.innerHTML = `
-        <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px; border-radius: 20px; text-align: center; border: 3px solid ${gradeColor}; max-width: 350px; animation: slideUp 0.5s;">
-            <div style="font-size: 60px; margin-bottom: 15px;">${gradeEmoji}</div>
-            <h2 style="margin: 0 0 10px 0; color: ${gradeColor}; font-size: 32px;">${grade}</h2>
-            <p style="color: #888; font-size: 14px; margin-bottom: 25px;">Landing Performance</p>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-                <div style="background: #0d0d0d; padding: 15px; border-radius: 10px;">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 5px;">VERTICAL SPEED</div>
-                    <div style="color: #fff; font-size: 24px; font-weight: bold;">${vs}</div>
-                    <div style="color: #888; font-size: 10px;">fpm</div>
-                </div>
-                <div style="background: #0d0d0d; padding: 15px; border-radius: 10px;">
-                    <div style="color: #888; font-size: 11px; margin-bottom: 5px;">TOUCHDOWN SPD</div>
-                    <div style="color: #fff; font-size: 24px; font-weight: bold;">${speed}</div>
-                    <div style="color: #888; font-size: 10px;">knots</div>
-                </div>
-            </div>
-            
-            <div style="background: #0d0d0d; padding: 12px; border-radius: 10px; margin-bottom: 20px;">
-                <span style="color: #888; font-size: 11px;">G-FORCE: </span>
-                <span style="color: #167fac; font-size: 18px; font-weight: bold;">${gForce}G</span>
-            </div>
-            
-            <button onclick="closeLandingPopup()" style="width: 100%; padding: 14px; background: ${gradeColor}; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer;">
-                Continue
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(overlay);
-    
-    // Auto close after 10 seconds
-    setTimeout(() => {
-        closeLandingPopup();
-    }, 10000);
-}
-
-function closeLandingPopup() {
-    const popup = document.getElementById('landingPopup');
-    if (popup) {
-        popup.style.animation = 'fadeOut 0.3s';
-        setTimeout(() => popup.remove(), 300);
-    }
-}
-
-// Add Multiplayer markers
-function updateMultiplayerMarkers() {
-    if (!map || !showMultiplayer) return;
-    
-    // Remove old multiplayer markers (keep user and AI)
-    aircraftMarkers.forEach(marker => {
-        if (marker.options && marker.options.isMultiplayer) {
-            map.removeLayer(marker);
-        }
-    });
-    
-    multiplayerPilots.forEach(pilot => {
-        const marker = L.marker([pilot.latitude, pilot.longitude], {
-            icon: createMultiplayerIcon(pilot.heading),
-            isMultiplayer: true
-        }).addTo(map);
-        
-        const popupContent = `
-            <div style="min-width:200px">
-                <h4 style="margin:0 0 5px 0; color: #00ffff;">${pilot.callsign}</h4>
-                <p style="margin:0 0 5px 0">Aircraft: ${pilot.aircraft}</p>
-                <p style="margin:0 0 5px 0">Speed: ${Math.round(pilot.groundSpeed)} kts</p>
-                <p style="margin:0 0 5px 0">Altitude: ${Math.round(pilot.altitude)} ft</p>
-                <p style="margin:0; color: #00ffff; font-size: 11px;">👥 Online Player</p>
-            </div>
-        `;
-        
-        marker.bindPopup(popupContent);
-        aircraftMarkers.push(marker);
-        
-        if (showAircraftLabels) {
-            const label = L.divIcon({
-                html: `<div style="background:rgba(0,255,255,0.7);color:#000;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap;font-weight:bold;">${pilot.callsign}</div>`,
-                className: '',
-                iconSize: [100, 20],
-                iconAnchor: [50, -10]
-            });
-            
-            const labelMarker = L.marker([pilot.latitude, pilot.longitude], { 
-                icon: label,
-                isMultiplayer: true 
-            }).addTo(map);
-            aircraftMarkers.push(labelMarker);
-        }
-    });
-}
-
-function createMultiplayerIcon(heading) {
-    return L.divIcon({
-        html: `<div style="transform: rotate(${heading}deg);"><svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#00ffff" stroke="#000" stroke-width="0.5"/></svg></div>`,
-        className: '',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-    });
-}
-
-// Camera controls
-function changeView(view) {
-    ws.send(JSON.stringify({ type: 'camera_view', view: view }));
-}
-
-// Request multiplayer data periodically
-setInterval(() => {
-    if (ws && ws.readyState === WebSocket.OPEN && showMultiplayer) {
-        ws.send(JSON.stringify({ type: 'request_multiplayer' }));
-    }
-}, 5000); // Every 5 seconds
-
-// Toggle multiplayer display
-function toggleMultiplayer() {
-    showMultiplayer = !showMultiplayer;
-    const btn = document.getElementById('toggleMultiplayerBtn');
-    btn.textContent = showMultiplayer ? 'Hide Players' : 'Show Players';
-    btn.className = showMultiplayer ? 'btn btn-primary' : 'btn btn-secondary';
-    
-    if (showMultiplayer) {
-        ws.send(JSON.stringify({ type: 'request_multiplayer' }));
-    } else {
-        // Remove multiplayer markers
-        aircraftMarkers = aircraftMarkers.filter(marker => {
-            if (marker.options && marker.options.isMultiplayer) {
-                map.removeLayer(marker);
-                return false;
-            }
-            return true;
-        });
-    }
-}
-
-// Request flight history
-function showFlightHistory() {
-    ws.send(JSON.stringify({ type: 'request_flight_history' }));
-}
-
-function displayFlightHistory() {
-    // Create popup to show flight history
-    const overlay = document.createElement('div');
-    overlay.id = 'historyPopup';
-    overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; overflow-y: auto;';
-    
-    let historyHTML = '<div style="background: #1a1a1a; padding: 20px; border-radius: 15px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto;">';
-    historyHTML += '<h2 style="margin: 0 0 20px 0; color: #167fac;">Flight History</h2>';
-    
-    if (flightHistory.length === 0) {
-        historyHTML += '<p style="color: #888; text-align: center;">No flights recorded yet</p>';
-    } else {
-        flightHistory.reverse().forEach(flight => {
-            const date = new Date(flight.StartTime).toLocaleDateString();
-            const time = new Date(flight.StartTime).toLocaleTimeString();
-            const duration = flight.FlightTime ? flight.FlightTime.toFixed(0) : '0';
-            const landingGrade = flight.Landing ? flight.Landing.Grade : 'N/A';
-            let gradeColor = '#888';
-            if (landingGrade === 'BUTTER') gradeColor = '#FFD700';
-            else if (landingGrade === 'SMOOTH') gradeColor = '#4CAF50';
-            else if (landingGrade === 'FIRM') gradeColor = '#ff8800';
-            else if (landingGrade === 'HARD') gradeColor = '#ff0000';
-            
-            historyHTML += `
-                <div style="background: #0d0d0d; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid ${gradeColor};">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                        <span style="color: #167fac; font-weight: bold;">${flight.Origin || 'Unknown'} → ${flight.Destination || 'Unknown'}</span>
-                        <span style="color: #888; font-size: 12px;">${date}</span>
-                    </div>
-                    <div style="color: #ccc; font-size: 13px; margin-bottom: 5px;">${flight.Aircraft || 'Unknown Aircraft'}</div>
-                    <div style="display: flex; justify-content: space-between; font-size: 12px; color: #888;">
-                        <span>Duration: ${duration} min</span>
-                        <span>Landing: <span style="color: ${gradeColor}; font-weight: bold;">${landingGrade}</span></span>
-                    </div>
-                </div>
-            `;
-        });
-    }
-    
-    historyHTML += '<button onclick="closeHistoryPopup()" style="width: 100%; padding: 14px; background: #167fac; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">Close</button>';
-    historyHTML += '</div>';
-    
-    overlay.innerHTML = historyHTML;
-    document.body.appendChild(overlay);
-}
-
-function closeHistoryPopup() {
-    const popup = document.getElementById('historyPopup');
-    if (popup) popup.remove();
-}
 
 function switchTab(index) {
-    document.querySelectorAll('.tab').forEach((tab, i) => {
-        tab.classList.toggle('active', i === index);
-    });
-    document.querySelectorAll('.tab-content').forEach((content, i) => {
-        content.classList.toggle('active', i === index);
-    });
-    
-    if (index === 1 && !map) {
-        setTimeout(initMap, 100);
-    }
-    
-    if (index === 2 && !pfdCanvas) {
-        setTimeout(initInstruments, 100);
-    }
-    
-    if (index === 4) {
-        // Request updated stats when opening stats tab
-        // Stats are already being sent continuously
-    }
-}
+            document.querySelectorAll('.tab').forEach((tab, i) => {
+                tab.classList.toggle('active', i === index);
+            });
+            document.querySelectorAll('.tab-content').forEach((content, i) => {
+                content.classList.toggle('active', i === index);
+            });
+            
+            if (index === 1 && !map) {
+                setTimeout(initMap, 100);
+            }
+            
+            if (index === 2 && !pfdCanvas) {
+                setTimeout(initInstruments, 100);
+            }
+        }
+
         function connectToSim() {
             uniqueId = document.getElementById('uniqueId').value.trim();
             if (!uniqueId) {
@@ -1878,101 +1297,6 @@ case 'autopilot_state':
                 updateMap(data.latitude, data.longitude, data.heading);
             }
         }
-
-// Add this array of major airports (you can expand this list)
-const majorAirports = [
-    { icao: 'KLAX', name: 'Los Angeles Intl', lat: 33.9425, lon: -118.408056 },
-    { icao: 'KJFK', name: 'JFK International', lat: 40.639722, lon: -73.778889 },
-    { icao: 'EGLL', name: 'London Heathrow', lat: 51.4775, lon: -0.461389 },
-    { icao: 'LFPG', name: 'Paris Charles de Gaulle', lat: 49.009722, lon: 2.547778 },
-    { icao: 'EDDF', name: 'Frankfurt', lat: 50.033333, lon: 8.570556 },
-    { icao: 'OMDB', name: 'Dubai Intl', lat: 25.252778, lon: 55.364444 },
-    { icao: 'WSSS', name: 'Singapore Changi', lat: 1.359167, lon: 103.989444 },
-    { icao: 'RJTT', name: 'Tokyo Haneda', lat: 35.553333, lon: 139.781111 },
-    { icao: 'YSSY', name: 'Sydney', lat: -33.946111, lon: 151.177222 },
-    { icao: 'CYVR', name: 'Vancouver Intl', lat: 49.193889, lon: -123.184444 },
-    { icao: 'CYYZ', name: 'Toronto Pearson', lat: 43.676667, lon: -79.630556 },
-    { icao: 'KSFO', name: 'San Francisco', lat: 37.619167, lon: -122.375 },
-    { icao: 'KORD', name: 'Chicago O\'Hare', lat: 41.979444, lon: -87.904722 },
-    { icao: 'KATL', name: 'Atlanta', lat: 33.640833, lon: -84.427778 },
-    { icao: 'KDFW', name: 'Dallas Fort Worth', lat: 32.896944, lon: -97.038056 },
-    { icao: 'KDEN', name: 'Denver', lat: 39.858889, lon: -104.666944 },
-    { icao: 'KLAS', name: 'Las Vegas', lat: 36.08, lon: -115.152222 },
-    { icao: 'KMIA', name: 'Miami', lat: 25.795833, lon: -80.287222 },
-    { icao: 'KSEA', name: 'Seattle', lat: 47.448889, lon: -122.309444 },
-    { icao: 'KPHX', name: 'Phoenix', lat: 33.435028, lon: -112.005905 }
-];
-
-let airportMarkers = [];
-let showAirports = false;
-
-function toggleAirports() {
-    showAirports = !showAirports;
-    const btn = document.getElementById('toggleAirportsBtn');
-    
-    if (showAirports) {
-        btn.textContent = 'Hide Airports';
-        btn.className = 'btn btn-primary';
-        displayNearbyAirports();
-    } else {
-        btn.textContent = 'Show Airports';
-        btn.className = 'btn btn-secondary';
-        removeAirportMarkers();
-    }
-}
-
-function displayNearbyAirports() {
-    if (!map || !userLat || !userLon) return;
-    
-    removeAirportMarkers();
-    
-    // Find airports within 200nm
-    const nearbyAirports = majorAirports
-        .map(apt => ({
-            ...apt,
-            distance: CalculateDistance(userLat, userLon, apt.lat, apt.lon)
-        }))
-        .filter(apt => apt.distance < 200)
-        .sort((a, b) => a.distance - b.distance)
-        .slice(0, 10);
-    
-    nearbyAirports.forEach(apt => {
-        const marker = L.marker([apt.lat, apt.lon], {
-            icon: L.divIcon({
-                html: `<div class="airport-marker">✈ ${apt.icao}</div>`,
-                className: '',
-                iconSize: [60, 20],
-                iconAnchor: [30, 10]
-            })
-        }).addTo(map);
-        
-        marker.bindPopup(`
-            <div style="min-width:180px">
-                <h4 style="margin:0 0 5px 0; color: #ff8800;">${apt.icao}</h4>
-                <p style="margin:0 0 5px 0; font-size: 12px;">${apt.name}</p>
-                <p style="margin:0; font-size: 12px; color: #888;">Distance: ${apt.distance.toFixed(1)} nm</p>
-            </div>
-        `);
-        
-        airportMarkers.push(marker);
-    });
-}
-
-function removeAirportMarkers() {
-    airportMarkers.forEach(marker => map.removeLayer(marker));
-    airportMarkers = [];
-}
-
-function CalculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 3440.065; // Earth's radius in nautical miles
-    const dLat = (lat2 - lat1) * Math.PI / 180.0;
-    const dLon = (lon2 - lon1) * Math.PI / 180.0;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180.0) * Math.cos(lat2 * Math.PI / 180.0) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-}
 
 function updateAutopilotUI(data) {
     // Store autopilot state globally for PFD access
@@ -3769,9 +3093,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
 
 
 
