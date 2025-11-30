@@ -1339,30 +1339,30 @@ function handleMessage(data) {
     switch(data.type) {
         // ... existing cases ...
         
-        case 'weather_data':
-            weatherData = data.data;
-            updateWeatherDisplay();
-            break;
-            
-        case 'flight_stats':
-            flightStats = data.data;
-            updateFlightStatsDisplay();
-            break;
-            
-        case 'landing_stats':
-            landingStats = data.data;
-            showLandingPopup();
-            break;
-            
-        case 'multiplayer_data':
-            multiplayerPilots = data.data;
-            updateMultiplayerMarkers();
-            break;
-            
-        case 'flight_history':
-            flightHistory = data.data;
-            displayFlightHistory();
-            break;
+case 'weather_data':
+    weatherData = data.data;
+    updateWeatherDisplay();
+    break;
+    
+case 'flight_stats':
+    flightStats = data.data;
+    updateFlightStatsDisplay();
+    break;
+    
+case 'landing_stats':
+    landingStats = data.data;
+    showLandingPopup();
+    break;
+    
+case 'multiplayer_data':
+    multiplayerPilots = data.data;
+    updateMultiplayerMarkers();
+    break;
+    
+case 'flight_history':
+    flightHistory = data.data;
+    displayFlightHistory();
+    break;
     }
 }
 
@@ -3763,6 +3763,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
