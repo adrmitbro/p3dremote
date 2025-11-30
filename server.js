@@ -1,4 +1,4 @@
-// P3D Remote Cloud Relay - Enhanced Edition
+// P3D Remote Cloud Relay - Enhanced Edition with Multiplayer Support
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -11,13 +11,16 @@ const PORT = process.env.PORT || 3000;
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword }
 const sessions = new Map();
+// Track multiplayer positions
+const onlinePilots = new Map(); // uniqueId -> pilot data
 
 app.use(express.static('public'));
 
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok',
-    activeSessions: sessions.size
+    activeSessions: sessions.size,
+    onlinePilots: onlinePilots.size
   });
 });
 
@@ -32,31 +35,46 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message);
       
-if (data.type === 'register_pc') {
-  // PC registering with unique ID
-  const uniqueId = data.uniqueId;
-  const password = data.password;
-  const guestPassword = data.guestPassword;
-  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false; // default to true for backwards compatibility
-  
-  ws.uniqueId = uniqueId;
-  ws.clientType = 'pc';
-  
-  if (!sessions.has(uniqueId)) {
-    sessions.set(uniqueId, {
-      pcClient: ws,
-      mobileClients: new Set(),
-      password: password,
-      guestPassword: guestPassword,
-      isGuestPasswordEnabled: isGuestPasswordEnabled
-    });
-} else {
-    const session = sessions.get(uniqueId);
-    session.pcClient = ws;
-    session.password = password;
-    session.guestPassword = guestPassword;
-    session.isGuestPasswordEnabled = isGuestPasswordEnabled;
-  }
+      if (data.type === 'register_pc') {
+        // PC registering with unique ID
+        const uniqueId = data.uniqueId;
+        const password = data.password;
+        const guestPassword = data.guestPassword;
+        const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false; // default to true for backwards compatibility
+        
+        ws.uniqueId = uniqueId;
+        ws.clientType = 'pc';
+        
+        if (!sessions.has(uniqueId)) {
+          sessions.set(uniqueId, {
+            pcClient: ws,
+            mobileClients: new Set(),
+            password: password,
+            guestPassword: guestPassword,
+            isGuestPasswordEnabled: isGuestPasswordEnabled
+          });
+        } else {
+          const session = sessions.get(uniqueId);
+          session.pcClient = ws;
+          session.password = password;
+          session.guestPassword = guestPassword;
+          session.isGuestPasswordEnabled = isGuestPasswordEnabled;
+        }
+        
+        // Initialize pilot position tracking
+        if (!onlinePilots.has(uniqueId)) {
+          onlinePilots.set(uniqueId, {
+            uniqueId: uniqueId,
+            callsign: '',
+            latitude: 0,
+            longitude: 0,
+            altitude: 0,
+            heading: 0,
+            groundSpeed: 0,
+            aircraft: '',
+            lastUpdate: Date.now()
+          });
+        }
         
         ws.send(JSON.stringify({ type: 'registered', uniqueId }));
         console.log(`PC registered: ${uniqueId}`);
@@ -86,36 +104,66 @@ if (data.type === 'register_pc') {
         console.log(`Mobile connected to: ${uniqueId}`);
       }
       
-else if (data.type === 'request_control') {
-  // Mobile requesting control access
-  const password = data.password;
-  const session = sessions.get(ws.uniqueId);
-  
-  console.log('DEBUG request_control:');
-  console.log('  Entered password:', password);
-  console.log('  Session password:', session ? session.password : 'NO SESSION');
-  console.log('  Session guestPassword:', session ? session.guestPassword : 'NO SESSION');
-  console.log('  isGuestPasswordEnabled:', session ? session.isGuestPasswordEnabled : 'NO SESSION');
-  
-  if (!session) {
-    ws.send(JSON.stringify({ type: 'auth_failed' }));
-    return;
-  }
-  
-  // Check main password or guest password (only if guest password is enabled)
-  const isMainPassword = password === session.password;
-  const isGuestPassword = session.isGuestPasswordEnabled && password === session.guestPassword;
-  
-  console.log('  isMainPassword:', isMainPassword);
-  console.log('  isGuestPassword:', isGuestPassword);
-  
-  if (isMainPassword || isGuestPassword) {
-    ws.hasControlAccess = true;
-    ws.send(JSON.stringify({ type: 'control_granted' }));
-  } else {
-    ws.send(JSON.stringify({ type: 'auth_failed' }));
-  }
-}
+      else if (data.type === 'mp_position') {
+        // Update pilot position
+        const pilotData = {
+          uniqueId: data.uniqueId,
+          callsign: data.callsign || data.uniqueId,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          altitude: data.altitude,
+          heading: data.heading,
+          groundSpeed: data.groundSpeed,
+          aircraft: data.aircraft || 'Unknown',
+          lastUpdate: Date.now()
+        };
+        onlinePilots.set(data.uniqueId, pilotData);
+      }
+      
+      else if (data.type === 'request_multiplayer') {
+        // Send list of all online pilots to requesting mobile client
+        const pilots = Array.from(onlinePilots.values())
+          .filter(p => Date.now() - p.lastUpdate < 30000) // Only pilots updated in last 30 seconds
+          .filter(p => p.uniqueId !== ws.uniqueId); // Don't send user's own data
+        
+        if (ws.clientType === 'mobile') {
+          ws.send(JSON.stringify({
+            type: 'multiplayer_data',
+            data: pilots
+          }));
+        }
+      }
+      
+      else if (data.type === 'request_control') {
+        // Mobile requesting control access
+        const password = data.password;
+        const session = sessions.get(ws.uniqueId);
+        
+        console.log('DEBUG request_control:');
+        console.log('  Entered password:', password);
+        console.log('  Session password:', session ? session.password : 'NO SESSION');
+        console.log('  Session guestPassword:', session ? session.guestPassword : 'NO SESSION');
+        console.log('  isGuestPasswordEnabled:', session ? session.isGuestPasswordEnabled : 'NO SESSION');
+        
+        if (!session) {
+          ws.send(JSON.stringify({ type: 'auth_failed' }));
+          return;
+        }
+        
+        // Check main password or guest password (only if guest password is enabled)
+        const isMainPassword = password === session.password;
+        const isGuestPassword = session.isGuestPasswordEnabled && password === session.guestPassword;
+        
+        console.log('  isMainPassword:', isMainPassword);
+        console.log('  isGuestPassword:', isGuestPassword);
+        
+        if (isMainPassword || isGuestPassword) {
+          ws.hasControlAccess = true;
+          ws.send(JSON.stringify({ type: 'control_granted' }));
+        } else {
+          ws.send(JSON.stringify({ type: 'auth_failed' }));
+        }
+      }
       
       else {
         // Route all other messages
@@ -135,7 +183,8 @@ else if (data.type === 'request_control') {
               data.type === 'change_flaps' ||
               data.type === 'throttle_control' ||
               data.type.includes('toggle_light') || 
-              data.type.includes('toggle_cabin')) {
+              data.type.includes('toggle_cabin') ||
+              data.type === 'camera_view') { // Added camera to restricted commands
             if (!ws.hasControlAccess) {
               ws.send(JSON.stringify({ 
                 type: 'control_required',
@@ -173,6 +222,9 @@ else if (data.type === 'request_control') {
         console.log(`PC disconnected: ${ws.uniqueId}`);
         session.pcClient = null;
         
+        // Remove from online pilots
+        onlinePilots.delete(ws.uniqueId);
+        
         // Notify mobile clients
         session.mobileClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
@@ -188,6 +240,16 @@ else if (data.type === 'request_control') {
   });
 });
 
+// Cleanup old pilots every minute
+setInterval(() => {
+  const now = Date.now();
+  for (const [uniqueId, pilot] of onlinePilots.entries()) {
+    if (now - pilot.lastUpdate > 60000) { // 1 minute timeout
+      onlinePilots.delete(uniqueId);
+    }
+  }
+}, 60000);
+
 function getMobileAppHTML() {
   return `<!DOCTYPE html>
 <html>
@@ -195,7 +257,7 @@ function getMobileAppHTML() {
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no'>
     <meta name="apple-mobile-web-app-capable" content="yes">
-<title>P3D Remote</title>
+    <title>P3D Remote</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.cdnfonts.com/css/good-times-2" rel="stylesheet">
@@ -213,7 +275,7 @@ function getMobileAppHTML() {
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
         }
-.header h1 { 
+        .header h1 { 
             font-size: 20px;
             display: flex;
             align-items: center;
@@ -230,11 +292,11 @@ function getMobileAppHTML() {
         }
         .status.connected { background: #167fac; color: #fff; }
         .status.offline { background: #f44336; color: white; }
-.status.paused { 
-    background: #800000; 
-    color: #fff;
-    display: none;
-}
+        .status.paused { 
+            background: #800000; 
+            color: #fff;
+            display: none;
+        }
         .status.paused.visible { display: inline-block; }
         
         .login-screen {
@@ -283,7 +345,6 @@ function getMobileAppHTML() {
         .btn-danger { background: #f44336; color: white; }
         .btn:disabled { background: #333; opacity: 0.5; }
 
-        
         .tabs {
             display: flex;
             background: #0d0d0d;
@@ -391,7 +452,7 @@ function getMobileAppHTML() {
             border: 1px solid #333;
         }
         
-.map-container {
+        .map-container {
             height: 400px;
             position: relative;
             margin-bottom: 15px;
@@ -591,97 +652,97 @@ function getMobileAppHTML() {
             margin-top: 5px;
         }
 
-.status-badge {
-    display: inline-block;
-    padding: 3px 5px;
-    border-radius: 6px;
-    font-size: 9px;
-    font-weight: bold;
-    background: #333;
-    color: #888;
-    margin: 1px;
-}
+        .status-badge {
+            display: inline-block;
+            padding: 3px 5px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-weight: bold;
+            background: #333;
+            color: #888;
+            margin: 1px;
+        }
 
-.status-badge.active {
-    background: #167fac;
-    color: #fff;
-}
+        .status-badge.active {
+            background: #167fac;
+            color: #fff;
+        }
 
-.summary-container {
-    background: #0d0d0d;
-    border-radius: 8px;
-    padding: 10px;
-    margin-bottom: 10px;
-}
+        .summary-container {
+            background: #0d0d0d;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
 
-.summary-main {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-    gap: 4px;
-}
+        .summary-main {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 4px;
+        }
 
-.summary-item {
-    text-align: center;
-    flex: 1;
-    min-width: 0;
-}
+        .summary-item {
+            text-align: center;
+            flex: 1;
+            min-width: 0;
+        }
 
-.summary-label {
-    font-size: 9px;
-    color: #888;
-    text-transform: uppercase;
-    margin-bottom: 2px;
-}
+        .summary-label {
+            font-size: 9px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
 
-.summary-value {
-    font-size: 14px;
-    font-weight: bold;
-    color: #167fac;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+        .summary-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #167fac;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
-.summary-secondary {
-    display: flex;
-    justify-content: space-around;
-    align-items: center;
-    padding: 5px 0;
-    border-top: 1px solid #222;
-}
+        .summary-secondary {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 5px 0;
+            border-top: 1px solid #222;
+        }
 
-.summary-secondary-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+        .summary-secondary-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
 
-.arrow-up {
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 10px solid #167fac;
-}
+        .arrow-up {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid #167fac;
+        }
 
-.arrow-down {
-    width: 0;
-    height: 0;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-top: 10px solid #167fac;
-}
+        .arrow-down {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 10px solid #167fac;
+        }
 
-.status-badges-row {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 2px;
-    justify-content: center;
-    margin-top: 8px;
-    padding-top: 8px;
-    border-top: 1px solid #222;
-}
+        .status-badges-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            justify-content: center;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #222;
+        }
         
         .detail-row {
             display: flex;
@@ -729,6 +790,126 @@ function getMobileAppHTML() {
             color: #888;
             font-size: 13px;
         }
+        
+        /* New styles for weather, stats, and camera controls */
+        .weather-container {
+            background: #0d0d0d;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .weather-row {
+            display: flex;
+            justify-content: space-around;
+            margin: 5px 0;
+            font-size: 13px;
+            color: #ccc;
+        }
+
+        .stats-container {
+            background: #0d0d0d;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .stat-item {
+            flex: 1;
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            display: block;
+            font-size: 10px;
+            color: #888;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            display: block;
+            font-size: 18px;
+            color: #167fac;
+            font-weight: bold;
+        }
+
+        .stat-value.recording {
+            color: #ff0000;
+            animation: pulse 2s infinite;
+        }
+
+        .stats-bottom {
+            text-align: center;
+            padding-top: 8px;
+            border-top: 1px solid #222;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .camera-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .camera-btn {
+            padding: 10px;
+            background: #0d0d0d;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #167fac;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .camera-btn:active {
+            background: #167fac;
+            color: #fff;
+        }
+
+        .airport-marker {
+            background: rgba(255, 165, 0, 0.8);
+            color: #000;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
     </style>
 </head>
 <body>
@@ -750,349 +931,427 @@ function getMobileAppHTML() {
     </div>
 
     <div id='mainApp' class='hidden'>
-<div class='tabs'>
-    <button class='tab active' onclick='switchTab(0)'>Flight</button>
-    <button class='tab' onclick='switchTab(1)'>Map</button>
-    <button class='tab' onclick='switchTab(2)'>Instruments</button>
-    <button class='tab' onclick='switchTab(3)'>Autopilot</button>
-</div>
+        <div class='tabs'>
+            <button class='tab active' onclick='switchTab(0)'>Flight</button>
+            <button class='tab' onclick='switchTab(1)'>Map</button>
+            <button class='tab' onclick='switchTab(2)'>Instruments</button>
+            <button class='tab' onclick='switchTab(3)'>Autopilot</button>
+            <button class='tab' onclick='switchTab(4)'>Stats</button>
+        </div>
 
-<!-- Flight Tab -->
-<div class='tab-content active'>
-    <div class='card'>
-        <div class='data-label'>Next Waypoint</div>
-        <div class='data-value' style='font-size: 18px;' id='nextWaypoint'>--</div>
-        <div class='waypoint-info-row'>
-            <div class='waypoint-info-item' id='wpDistance'>Distance: --</div>
-            <div class='waypoint-info-item' id='wpBearing'>Bearing: --°</div>
-        </div>
-        <div class='waypoint-info-item' id='wpEte'>ETE: --</div>
-    </div>
-
-    <div class='card'>
-        <div class='data-label'>Total Distance to Destination</div>
-        <div class='data-value'><span id='distance'>--</span> nm</div>
-        <div style='margin-top: 8px; color: #888; font-size: 13px;' id='ete'>Total ETE: --</div>
-    </div>
-
-    <div class='card'>
-        <div class='data-grid'>
-            <div class='data-item'>
-                <div class='data-label'>Speed</div>
-                <div class='data-value' id='speed'>--</div>
-                <div style='font-size: 11px; color: #888;'>knots</div>
-            </div>
-            <div class='data-item'>
-                <div class='data-label'>Altitude</div>
-                <div class='data-value' id='altitude'>--</div>
-                <div style='font-size: 11px; color: #888;'>feet</div>
-            </div>
-            <div class='data-item'>
-                <div class='data-label'>Heading</div>
-                <div class='data-value' id='heading'>--</div>
-                <div style='font-size: 11px; color: #888;'>degrees</div>
-            </div>
-            <div class='data-item'>
-                <div class='data-label'>V/S</div>
-                <div class='data-value' id='vs'>--</div>
-                <div style='font-size: 11px; color: #888;'>fpm</div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Map Tab -->
-<div class='tab-content'>
-    <div class='map-controls'>
-        <div class='map-controls-row'>
-            <div class='map-buttons'>
-                <button id='followUserBtn' class='btn btn-secondary' onclick='toggleFollowUser()'>Follow Aircraft</button>
-                <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
-            </div>
-            <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
-        </div>
-    </div>
-    
-    <div class='map-container'>
-        <div id='map'></div>
-    </div>
-    
-    <div class='aircraft-panel'>
-        <div class='panel-section'>
-            <div class='panel-header'>
-                <h3>Nearby Aircraft</h3>
-            </div>
-            <div id='nearbyAircraftList' class='aircraft-list'>
-                <div class='no-aircraft'>No nearby aircraft</div>
-            </div>
-        </div>
-        
-        <div class='panel-section'>
-            <div class='panel-header'>
-                <h3>Aircraft Details</h3>
-            </div>
-            <div id='aircraftDetails' class='aircraft-details'>
-                <p>Click on an aircraft to view details</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Instruments Tab -->
-<div class='tab-content'>
-    <div class='instrument-panel'>
-        <div class='instrument-row'>
-            <div class='instrument-container'>
-                <span class='instrument-label'>Primary Flight Display</span>
-                <canvas id='pfdCanvas' class='instrument' width='300' height='300'></canvas>
-            </div>
-        </div>
-        <div class='instrument-row'>
-            <div class='instrument-container'>
-                <span class='instrument-label'>Multi-Function Display</span>
-                <canvas id='mfdCanvas' class='instrument' width='300' height='300'></canvas>
-            </div>
-        </div>
-<div class='instrument-row'>
-            <div class='instrument-container' style='width: 100%; max-width: 320px;'>
-                <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
-                    <button onclick='prevEICASPage()' style='background: #1a1a1a; border: 1px solid #333; color: #167fac; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px;'>◀</button>
-                    <span class='instrument-label' style='position: static;' id='eicasPageLabel'>ENGINE</span>
-                    <button onclick='nextEICASPage()' style='background: #1a1a1a; border: 1px solid #333; color: #167fac; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px;'>▶</button>
+        <!-- Flight Tab -->
+        <div class='tab-content active'>
+            <!-- Weather Card -->
+            <div class='card'>
+                <h3 style='margin-bottom: 10px;'>Weather</h3>
+                <div id='weatherInfo' class='weather-container'>
+                    <div class='weather-row'>
+                        <span>🌡️ --°C</span>
+                        <span>🎚️ ---- mb</span>
+                    </div>
+                    <div class='weather-row'>
+                        <span>💨 --kt @ ---°</span>
+                        <span>👁️ -- mi</span>
+                    </div>
                 </div>
-                <canvas id='eicasCanvas' class='instrument' width='300' height='250'></canvas>
             </div>
-        </div>
-    </div>
-</div>
 
-<!-- Autopilot Tab -->
-<div class='tab-content'>
-    <div id='controlLock' class='card'>
-        <div class='info-box'>🔒 Enter password to access controls</div>
-        <input type='password' id='controlPassword' placeholder='Password'>
-        <button class='btn btn-primary' onclick='unlockControls()'>Unlock Controls</button>
-    </div>
-    
-    <div id='controlPanel' class='hidden'>
-        <div class='card'>
-            <div class='btn-group'>
-                <button class='btn btn-secondary' id='btnPause' onclick='togglePause()'>⏸️ Pause</button>
-                <button class='btn btn-primary' onclick='saveGame()'>💾 Save Flight</button>
-            </div>
-        </div>
-
-        <div class='card'>
-            <h3 style='margin-bottom: 10px;'>Summary</h3>
-            <div class='summary-container'>
-                <div class='summary-main'>
-                    <div class='summary-item'>
-                        <div class='summary-label'>SPD</div>
-                        <div class='summary-value' id='summarySpeed'>--</div>
-                    </div>
-                    <div class='summary-item'>
-                        <div class='summary-label'>HDG</div>
-                        <div class='summary-value' id='summaryHeading'>--</div>
-                    </div>
-                    <div class='summary-item'>
-                        <div class='summary-label'>ALT</div>
-                        <div class='summary-value' id='summaryAltitude'>--</div>
-                    </div>
-                        <div class='summary-item'>
-        <div class='summary-label'>V/S</div>
-        <div class='summary-value' id='summaryVS'>--</div>
-    </div>
+            <div class='card'>
+                <div class='data-label'>Next Waypoint</div>
+                <div class='data-value' style='font-size: 18px;' id='nextWaypoint'>--</div>
+                <div class='waypoint-info-row'>
+                    <div class='waypoint-info-item' id='wpDistance'>Distance: --</div>
+                    <div class='waypoint-info-item' id='wpBearing'>Bearing: --°</div>
                 </div>
-                
-                <div class='summary-secondary'>
-                    <div class='summary-secondary-item'>
-                        <span style='font-size: 10px; color: #888;'>FLAPS</span>
-                        <span style='font-size: 12px; font-weight: bold; color: #167fac;' id='summaryFlaps'>--%</span>
+                <div class='waypoint-info-item' id='wpEte'>ETE: --</div>
+            </div>
+
+            <div class='card'>
+                <div class='data-label'>Total Distance to Destination</div>
+                <div class='data-value'><span id='distance'>--</span> nm</div>
+                <div style='margin-top: 8px; color: #888; font-size: 13px;' id='ete'>Total ETE: --</div>
+            </div>
+
+            <div class='card'>
+                <div class='data-grid'>
+                    <div class='data-item'>
+                        <div class='data-label'>Speed</div>
+                        <div class='data-value' id='speed'>--</div>
+                        <div style='font-size: 11px; color: #888;'>knots</div>
                     </div>
-                    <div class='summary-secondary-item'>
-                        <span style='font-size: 10px; color: #888;'>GEAR</span>
-                        <div id='summaryGear' class='arrow-up'></div>
+                    <div class='data-item'>
+                        <div class='data-label'>Altitude</div>
+                        <div class='data-value' id='altitude'>--</div>
+                        <div style='font-size: 11px; color: #888;'>feet</div>
                     </div>
-                    <div class='summary-secondary-item'>
-                        <span style='font-size: 10px; color: #888;'>ENG</span>
-                        <div id='summaryEngineIndicators' style='display: flex; gap: 3px;'></div>
+                    <div class='data-item'>
+                        <div class='data-label'>Heading</div>
+                        <div class='data-value' id='heading'>--</div>
+                        <div style='font-size: 11px; color: #888;'>degrees</div>
+                    </div>
+                    <div class='data-item'>
+                        <div class='data-label'>V/S</div>
+                        <div class='data-value' id='vs'>--</div>
+                        <div style='font-size: 11px; color: #888;'>fpm</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Map Tab -->
+        <div class='tab-content'>
+            <div class='map-controls'>
+                <div class='map-controls-row'>
+                    <div class='map-buttons'>
+                        <button id='followUserBtn' class='btn btn-secondary' onclick='toggleFollowUser()'>Follow Aircraft</button>
+                        <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
+                    </div>
+                    <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
+                </div>
+                <div class='map-controls-row'>
+                    <button id='toggleMultiplayerBtn' class='btn btn-secondary' onclick='toggleMultiplayer()'>Show Players</button>
+                    <button id='toggleAirportsBtn' class='btn btn-secondary' onclick='toggleAirports()'>Show Airports</button>
+                </div>
+            </div>
+            
+            <div class='map-container'>
+                <div id='map'></div>
+            </div>
+            
+            <div class='aircraft-panel'>
+                <div class='panel-section'>
+                    <div class='panel-header'>
+                        <h3>Nearby Aircraft</h3>
+                    </div>
+                    <div id='nearbyAircraftList' class='aircraft-list'>
+                        <div class='no-aircraft'>No nearby aircraft</div>
                     </div>
                 </div>
                 
-<div class='status-badges-row'>
-    <span class='status-badge' id='apMasterStatus'>AP</span>
-    <span class='status-badge' id='apAltStatus'>ALT</span>
-    <span class='status-badge' id='apHdgStatus'>HDG</span>
-    <span class='status-badge' id='apSpeedStatus'>SPD</span>
-    <span class='status-badge' id='apLocStatus'>LOC</span>
-    <span class='status-badge active' id='apNavGpsStatus'>GPS</span>
-    <span class='status-badge' id='apAppStatus'>APP</span>
-    <span class='status-badge' id='autoThrottleStatus'>A/T</span>
-</div>
+                <div class='panel-section'>
+                    <div class='panel-header'>
+                        <h3>Aircraft Details</h3>
+                    </div>
+                    <div id='aircraftDetails' class='aircraft-details'>
+                        <p>Click on an aircraft to view details</p>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class='card'>
-            <h3>Autopilot</h3>
-            
-            <div class='control-row'>
-                <span class='control-label'>Master</span>
-                <button class='toggle-btn off' id='apMaster' onclick='toggleAP("master")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Altitude Hold</span>
-                <button class='toggle-btn off' id='apAlt' onclick='toggleAP("altitude")'>OFF</button>
-            </div>
-            <div class='input-group'>
-                <input type='number' id='targetAlt' placeholder='Target Altitude (ft)'>
-                <button class='btn btn-primary' onclick='setAltitude()'>Set</button>
-            </div>
-            
-<div class='control-row'>
-    <span class='control-label'>Vertical Speed</span>
-</div>
-            <div class='input-group'>
-                <input type='number' id='targetVS' placeholder='Vertical Speed (fpm)'>
-                <button class='btn btn-primary' onclick='setVS()'>Set</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Airspeed Hold</span>
-                <button class='toggle-btn off' id='apSpeed' onclick='toggleAP("speed")'>OFF</button>
-            </div>
-            <div class='input-group'>
-                <input type='number' id='targetSpeed' placeholder='Target Speed (kts)'>
-                <button class='btn btn-primary' onclick='setSpeed()'>Set</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Heading Hold</span>
-                <button class='toggle-btn off' id='apHdg' onclick='toggleAP("heading")'>OFF</button>
-            </div>
-            <div class='input-group'>
-                <input type='number' id='targetHdg' placeholder='Heading (deg)'>
-                <button class='btn btn-primary' onclick='setHeading()'>Set</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>NAV/GPS Mode</span>
-                <button class='toggle-btn off' id='navMode' onclick='toggleNavMode()'>NAV</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>LOC Hold</span>
-                <button class='toggle-btn off' id='apNav' onclick='toggleAP("loc")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Approach</span>
-                <button class='toggle-btn off' id='apApp' onclick='toggleAP("ils")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Auto Throttle</span>
-                <button class='toggle-btn off' id='autoThrottle' onclick='toggleAP("throttle")'>OFF</button>
+
+        <!-- Instruments Tab -->
+        <div class='tab-content'>
+            <div class='instrument-panel'>
+                <div class='instrument-row'>
+                    <div class='instrument-container'>
+                        <span class='instrument-label'>Primary Flight Display</span>
+                        <canvas id='pfdCanvas' class='instrument' width='300' height='300'></canvas>
+                    </div>
+                </div>
+                <div class='instrument-row'>
+                    <div class='instrument-container'>
+                        <span class='instrument-label'>Multi-Function Display</span>
+                        <canvas id='mfdCanvas' class='instrument' width='300' height='300'></canvas>
+                    </div>
+                </div>
+                <div class='instrument-row'>
+                    <div class='instrument-container' style='width: 100%; max-width: 320px;'>
+                        <div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'>
+                            <button onclick='prevEICASPage()' style='background: #1a1a1a; border: 1px solid #333; color: #167fac; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px;'>◀</button>
+                            <span class='instrument-label' style='position: static;' id='eicasPageLabel'>ENGINE</span>
+                            <button onclick='nextEICASPage()' style='background: #1a1a1a; border: 1px solid #333; color: #167fac; padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 16px;'>▶</button>
+                        </div>
+                        <canvas id='eicasCanvas' class='instrument' width='300' height='250'></canvas>
+                    </div>
+                </div>
             </div>
         </div>
-        
-        <div class='card'>
-            <h3>Aircraft</h3>
-<div class='control-row' style='display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;'>
-    <span class='control-label'>All Engines</span>
-    <div id='engineIndicators' style='display: flex; gap: 5px; justify-content: flex-end;'></div>
-    <button class='toggle-btn off' id='allEngines' onclick='toggleAllEngines()'>OFF</button>
-</div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Landing Gear</span>
-                <button class='toggle-btn off' id='gear' onclick='toggleGear()'>UP</button>
+
+        <!-- Autopilot Tab -->
+        <div class='tab-content'>
+            <div id='controlLock' class='card'>
+                <div class='info-box'>🔒 Enter password to access controls</div>
+                <input type='password' id='controlPassword' placeholder='Password'>
+                <button class='btn btn-primary' onclick='unlockControls()'>Unlock Controls</button>
             </div>
             
-            <div class='control-row'>
-                <span class='control-label'>Flaps</span>
-                <div>
-                    <button class='btn btn-secondary' style='width:auto; padding:8px 16px; margin:0 5px;' onclick='changeFlaps(-1)'>-</button>
-                    <span id='flapsPos' style='display:inline-block; width:60px; text-align:center;'>0%</span>
-                    <button class='btn btn-secondary' style='width:auto; padding:8px 16px; margin:0 5px;' onclick='changeFlaps(1)'>+</button>
+            <div id='controlPanel' class='hidden'>
+                <div class='card'>
+                    <div class='btn-group'>
+                        <button class='btn btn-secondary' id='btnPause' onclick='togglePause()'>⏸️ Pause</button>
+                        <button class='btn btn-primary' onclick='saveGame()'>💾 Save Flight</button>
+                    </div>
+                </div>
+
+                <div class='card'>
+                    <h3 style='margin-bottom: 10px;'>Summary</h3>
+                    <div class='summary-container'>
+                        <div class='summary-main'>
+                            <div class='summary-item'>
+                                <div class='summary-label'>SPD</div>
+                                <div class='summary-value' id='summarySpeed'>--</div>
+                            </div>
+                            <div class='summary-item'>
+                                <div class='summary-label'>HDG</div>
+                                <div class='summary-value' id='summaryHeading'>--</div>
+                            </div>
+                            <div class='summary-item'>
+                                <div class='summary-label'>ALT</div>
+                                <div class='summary-value' id='summaryAltitude'>--</div>
+                            </div>
+                            <div class='summary-item'>
+                                <div class='summary-label'>V/S</div>
+                                <div class='summary-value' id='summaryVS'>--</div>
+                            </div>
+                        </div>
+                        
+                        <div class='summary-secondary'>
+                            <div class='summary-secondary-item'>
+                                <span style='font-size: 10px; color: #888;'>FLAPS</span>
+                                <span style='font-size: 12px; font-weight: bold; color: #167fac;' id='summaryFlaps'>--%</span>
+                            </div>
+                            <div class='summary-secondary-item'>
+                                <span style='font-size: 10px; color: #888;'>GEAR</span>
+                                <div id='summaryGear' class='arrow-up'></div>
+                            </div>
+                            <div class='summary-secondary-item'>
+                                <span style='font-size: 10px; color: #888;'>ENG</span>
+                                <div id='summaryEngineIndicators' style='display: flex; gap: 3px;'></div>
+                            </div>
+                        </div>
+                        
+                        <div class='status-badges-row'>
+                            <span class='status-badge' id='apMasterStatus'>AP</span>
+                            <span class='status-badge' id='apAltStatus'>ALT</span>
+                            <span class='status-badge' id='apHdgStatus'>HDG</span>
+                            <span class='status-badge' id='apSpeedStatus'>SPD</span>
+                            <span class='status-badge' id='apLocStatus'>LOC</span>
+                            <span class='status-badge active' id='apNavGpsStatus'>GPS</span>
+                            <span class='status-badge' id='apAppStatus'>APP</span>
+                            <span class='status-badge' id='autoThrottleStatus'>A/T</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class='card'>
+                    <h3>Autopilot</h3>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Master</span>
+                        <button class='toggle-btn off' id='apMaster' onclick='toggleAP("master")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Altitude Hold</span>
+                        <button class='toggle-btn off' id='apAlt' onclick='toggleAP("altitude")'>OFF</button>
+                    </div>
+                    <div class='input-group'>
+                        <input type='number' id='targetAlt' placeholder='Target Altitude (ft)'>
+                        <button class='btn btn-primary' onclick='setAltitude()'>Set</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Vertical Speed</span>
+                    </div>
+                    <div class='input-group'>
+                        <input type='number' id='targetVS' placeholder='Vertical Speed (fpm)'>
+                        <button class='btn btn-primary' onclick='setVS()'>Set</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Airspeed Hold</span>
+                        <button class='toggle-btn off' id='apSpeed' onclick='toggleAP("speed")'>OFF</button>
+                    </div>
+                    <div class='input-group'>
+                        <input type='number' id='targetSpeed' placeholder='Target Speed (kts)'>
+                        <button class='btn btn-primary' onclick='setSpeed()'>Set</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Heading Hold</span>
+                        <button class='toggle-btn off' id='apHdg' onclick='toggleAP("heading")'>OFF</button>
+                    </div>
+                    <div class='input-group'>
+                        <input type='number' id='targetHdg' placeholder='Heading (deg)'>
+                        <button class='btn btn-primary' onclick='setHeading()'>Set</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>NAV/GPS Mode</span>
+                        <button class='toggle-btn off' id='navMode' onclick='toggleNavMode()'>NAV</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>LOC Hold</span>
+                        <button class='toggle-btn off' id='apNav' onclick='toggleAP("loc")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Approach</span>
+                        <button class='toggle-btn off' id='apApp' onclick='toggleAP("ils")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Auto Throttle</span>
+                        <button class='toggle-btn off' id='autoThrottle' onclick='toggleAP("throttle")'>OFF</button>
+                    </div>
+                </div>
+                
+                <div class='card'>
+                    <h3>Aircraft</h3>
+                    <div class='control-row' style='display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center;'>
+                        <span class='control-label'>All Engines</span>
+                        <div id='engineIndicators' style='display: flex; gap: 5px; justify-content: flex-end;'></div>
+                        <button class='toggle-btn off' id='allEngines' onclick='toggleAllEngines()'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Landing Gear</span>
+                        <button class='toggle-btn off' id='gear' onclick='toggleGear()'>UP</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Flaps</span>
+                        <div>
+                            <button class='btn btn-secondary' style='width:auto; padding:8px 16px; margin:0 5px;' onclick='changeFlaps(-1)'>-</button>
+                            <span id='flapsPos' style='display:inline-block; width:60px; text-align:center;'>0%</span>
+                            <button class='btn btn-secondary' style='width:auto; padding:8px 16px; margin:0 5px;' onclick='changeFlaps(1)'>+</button>
+                        </div>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Speedbrake</span>
+                        <button class='toggle-btn off' id='spoilers' onclick='toggleSpeedbrake()'>RETRACTED</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Parking Brake</span>
+                        <button class='toggle-btn off' id='parkingBrake' onclick='toggleParkingBrake()'>OFF</button>
+                    </div>
+                </div>
+                
+                <div class='card'>
+                    <h3>Exterior Lights</h3>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Strobe Lights</span>
+                        <button class='toggle-btn off' id='lightStrobe' onclick='toggleLight("strobe")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Landing Lights</span>
+                        <button class='toggle-btn off' id='lightLanding' onclick='toggleLight("landing")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Taxi Lights</span>
+                        <button class='toggle-btn off' id='lightTaxi' onclick='toggleLight("taxi")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Beacon Lights</span>
+                        <button class='toggle-btn off' id='lightBeacon' onclick='toggleLight("beacon")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Nav Lights</span>
+                        <button class='toggle-btn off' id='lightNav' onclick='toggleLight("nav")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Logo Lights</span>
+                        <button class='toggle-btn off' id='lightLogo' onclick='toggleLight("logo")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Wing Lights</span>
+                        <button class='toggle-btn off' id='lightWing' onclick='toggleLight("wing")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Recognition Lights</span>
+                        <button class='toggle-btn off' id='lightRecognition' onclick='toggleLight("recognition")'>OFF</button>
+                    </div>
+                </div>
+                
+                <div class='card'>
+                    <h3>Cabin & Interior</h3>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Panel Lights</span>
+                        <button class='toggle-btn off' id='lightPanel' onclick='toggleLight("panel")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>No Smoking Sign</span>
+                        <button class='toggle-btn off' id='noSmokingSwitch' onclick='toggleCabin("nosmoking")'>OFF</button>
+                    </div>
+                    
+                    <div class='control-row'>
+                        <span class='control-label'>Seatbelts Sign</span>
+                        <button class='toggle-btn off' id='seatbeltsSwitch' onclick='toggleCabin("seatbelts")'>OFF</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Tab -->
+        <div class='tab-content'>
+            <div class='card'>
+                <h3 style='margin-bottom: 10px;'>Current Flight</h3>
+                <div id='flightStatsInfo' class='stats-container'>
+                    <div class='stats-row'>
+                        <div class='stat-item'>
+                            <span class='stat-label'>Flight Time</span>
+                            <span class='stat-value'>0.0 min</span>
+                        </div>
+                        <div class='stat-item'>
+                            <span class='stat-label'>Max Alt</span>
+                            <span class='stat-value'>0 ft</span>
+                        </div>
+                    </div>
+                    <div class='stats-row'>
+                        <div class='stat-item'>
+                            <span class='stat-label'>Max Speed</span>
+                            <span class='stat-value'>0 kts</span>
+                        </div>
+                        <div class='stat-item'>
+                            <span class='stat-label'>Total Flights</span>
+                            <span class='stat-value'>0</span>
+                        </div>
+                    </div>
+                    <div class='stats-bottom'>
+                        <span>Total Hours: 0.0h</span>
+                    </div>
                 </div>
             </div>
             
-            <div class='control-row'>
-                <span class='control-label'>Speedbrake</span>
-                <button class='toggle-btn off' id='spoilers' onclick='toggleSpeedbrake()'>RETRACTED</button>
+            <div class='card'>
+                <h3 style='margin-bottom: 10px;'>Flight History</h3>
+                <button class='btn btn-primary' onclick='showFlightHistory()'>View All Flights</button>
+                <div style='margin-top: 10px; color: #888; font-size: 12px; text-align: center;'>
+                    Track your flights and landing performance
+                </div>
             </div>
             
-            <div class='control-row'>
-                <span class='control-label'>Parking Brake</span>
-                <button class='toggle-btn off' id='parkingBrake' onclick='toggleParkingBrake()'>OFF</button>
+            <div class='card'>
+                <h3 style='margin-bottom: 10px;'>Camera Controls</h3>
+                <div class='camera-controls'>
+                    <button class='camera-btn' onclick='changeView("cockpit")'>🪟<br>Cockpit</button>
+                    <button class='camera-btn' onclick='changeView("external")'>✈️<br>External</button>
+                    <button class='camera-btn' onclick='changeView("tower")'>🗼<br>Tower</button>
+                    <button class='camera-btn' onclick='changeView("prev")'>◀<br>Previous</button>
+                    <button class='camera-btn' onclick='changeView("next")'>▶<br>Next</button>
+                </div>
+            </div>
+            
+            <div class='card'>
+                <h3 style='margin-bottom: 10px;'>Landing Performance</h3>
+                <div style='color: #888; font-size: 13px; text-align: center; padding: 20px;'>
+                    Your last landing stats will appear here after touchdown
+                </div>
             </div>
         </div>
-        
-        <div class='card'>
-            <h3>Exterior Lights</h3>
-            
-            <div class='control-row'>
-                <span class='control-label'>Strobe Lights</span>
-                <button class='toggle-btn off' id='lightStrobe' onclick='toggleLight("strobe")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Landing Lights</span>
-                <button class='toggle-btn off' id='lightLanding' onclick='toggleLight("landing")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Taxi Lights</span>
-                <button class='toggle-btn off' id='lightTaxi' onclick='toggleLight("taxi")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Beacon Lights</span>
-                <button class='toggle-btn off' id='lightBeacon' onclick='toggleLight("beacon")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Nav Lights</span>
-                <button class='toggle-btn off' id='lightNav' onclick='toggleLight("nav")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Logo Lights</span>
-                <button class='toggle-btn off' id='lightLogo' onclick='toggleLight("logo")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Wing Lights</span>
-                <button class='toggle-btn off' id='lightWing' onclick='toggleLight("wing")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Recognition Lights</span>
-                <button class='toggle-btn off' id='lightRecognition' onclick='toggleLight("recognition")'>OFF</button>
-            </div>
-        </div>
-        
-        <div class='card'>
-            <h3>Cabin & Interior</h3>
-            
-            <div class='control-row'>
-                <span class='control-label'>Panel Lights</span>
-                <button class='toggle-btn off' id='lightPanel' onclick='toggleLight("panel")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>No Smoking Sign</span>
-                <button class='toggle-btn off' id='noSmokingSwitch' onclick='toggleCabin("nosmoking")'>OFF</button>
-            </div>
-            
-            <div class='control-row'>
-                <span class='control-label'>Seatbelts Sign</span>
-                <button class='toggle-btn off' id='seatbeltsSwitch' onclick='toggleCabin("seatbelts")'>OFF</button>
-            </div>
-        </div>
-    </div>
-</div>
     </div>
 
     <script>
@@ -1116,16 +1375,50 @@ function getMobileAppHTML() {
         let userHeading = 0;
         let currentFlightData = {};
         let mapInitialized = false;
-let pfdCanvas = null;
-let pfdCtx = null;
-let mfdCanvas = null;
-let mfdCtx = null;
-let eicasCanvas = null;
-let eicasCtx = null;
-let eicasPage = 0;
-let numEngines = 2;
+        let pfdCanvas = null;
+        let pfdCtx = null;
+        let mfdCanvas = null;
+        let mfdCtx = null;
+        let eicasCanvas = null;
+        let eicasCtx = null;
+        let eicasPage = 0;
+        let numEngines = 2;
+        
+        // New global variables for multiplayer, weather, stats, etc.
+        let weatherData = {};
+        let flightStats = {};
+        let landingStats = null;
+        let multiplayerPilots = [];
+        let flightHistory = [];
+        let showMultiplayer = false;
+        let airportMarkers = [];
+        let showAirports = false;
+        
+        // Major airports data
+        const majorAirports = [
+            { icao: 'KLAX', name: 'Los Angeles Intl', lat: 33.9425, lon: -118.408056 },
+            { icao: 'KJFK', name: 'JFK International', lat: 40.639722, lon: -73.778889 },
+            { icao: 'EGLL', name: 'London Heathrow', lat: 51.4775, lon: -0.461389 },
+            { icao: 'LFPG', name: 'Paris Charles de Gaulle', lat: 49.009722, lon: 2.547778 },
+            { icao: 'EDDF', name: 'Frankfurt', lat: 50.033333, lon: 8.570556 },
+            { icao: 'OMDB', name: 'Dubai Intl', lat: 25.252778, lon: 55.364444 },
+            { icao: 'WSSS', name: 'Singapore Changi', lat: 1.359167, lon: 103.989444 },
+            { icao: 'RJTT', name: 'Tokyo Haneda', lat: 35.553333, lon: 139.781111 },
+            { icao: 'YSSY', name: 'Sydney', lat: -33.946111, lon: 151.177222 },
+            { icao: 'CYVR', name: 'Vancouver Intl', lat: 49.193889, lon: -123.184444 },
+            { icao: 'CYYZ', name: 'Toronto Pearson', lat: 43.676667, lon: -79.630556 },
+            { icao: 'KSFO', name: 'San Francisco', lat: 37.619167, lon: -122.375 },
+            { icao: 'KORD', name: 'Chicago O\'Hare', lat: 41.979444, lon: -87.904722 },
+            { icao: 'KATL', name: 'Atlanta', lat: 33.640833, lon: -84.427778 },
+            { icao: 'KDFW', name: 'Dallas Fort Worth', lat: 32.896944, lon: -97.038056 },
+            { icao: 'KDEN', name: 'Denver', lat: 39.858889, lon: -104.666944 },
+            { icao: 'KLAS', name: 'Las Vegas', lat: 36.08, lon: -115.152222 },
+            { icao: 'KMIA', name: 'Miami', lat: 25.795833, lon: -80.287222 },
+            { icao: 'KSEA', name: 'Seattle', lat: 47.448889, lon: -122.309444 },
+            { icao: 'KPHX', name: 'Phoenix', lat: 33.435028, lon: -112.005905 }
+        ];
 
-function switchTab(index) {
+        function switchTab(index) {
             document.querySelectorAll('.tab').forEach((tab, i) => {
                 tab.classList.toggle('active', i === index);
             });
@@ -1139,6 +1432,11 @@ function switchTab(index) {
             
             if (index === 2 && !pfdCanvas) {
                 setTimeout(initInstruments, 100);
+            }
+            
+            if (index === 4) {
+                // Request updated stats when opening stats tab
+                // Stats are already being sent continuously
             }
         }
 
@@ -1174,11 +1472,11 @@ function switchTab(index) {
 
         function handleMessage(data) {
             switch(data.type) {
-case 'connected':
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('mainApp').classList.remove('hidden');
-    updateStatus(data.pcOnline ? 'connected' : 'offline');
-    break;
+                case 'connected':
+                    document.getElementById('loginScreen').classList.add('hidden');
+                    document.getElementById('mainApp').classList.remove('hidden');
+                    updateStatus(data.pcOnline ? 'connected' : 'offline');
+                    break;
 
                 case 'save_complete':
                     closeSaveProgress(true, data.filename);
@@ -1192,19 +1490,19 @@ case 'connected':
                     alert(data.message);
                     break;
                     
-case 'control_granted':
-    hasControl = true;
-    document.getElementById('controlLock').classList.add('hidden');
-    document.getElementById('controlPanel').classList.remove('hidden');
-    // Password was correct, keep it saved
-    break;
+                case 'control_granted':
+                    hasControl = true;
+                    document.getElementById('controlLock').classList.add('hidden');
+                    document.getElementById('controlPanel').classList.remove('hidden');
+                    // Password was correct, keep it saved
+                    break;
                     
-case 'auth_failed':
-    alert('Wrong password!');
-    // Clear saved password since it was wrong
-    localStorage.removeItem('p3d_control_password');
-    document.getElementById('controlPassword').value = '';
-    break;
+                case 'auth_failed':
+                    alert('Wrong password!');
+                    // Clear saved password since it was wrong
+                    localStorage.removeItem('p3d_control_password');
+                    document.getElementById('controlPassword').value = '';
+                    break;
                     
                 case 'control_required':
                     if (document.getElementById('controlLock').classList.contains('hidden')) {
@@ -1220,10 +1518,10 @@ case 'auth_failed':
                     updateFlightData(data.data);
                     break;
                     
-case 'autopilot_state':
-    console.log('Received autopilot_state:', data.data);
-    updateAutopilotUI(data.data);
-    break;
+                case 'autopilot_state':
+                    console.log('Received autopilot_state:', data.data);
+                    updateAutopilotUI(data.data);
+                    break;
                     
                 case 'ai_traffic':
                     aiAircraft = data.data;
@@ -1235,6 +1533,32 @@ case 'autopilot_state':
                     
                 case 'pc_offline':
                     updateStatus('offline');
+                    break;
+                    
+                // New message handlers for weather, stats, multiplayer, etc.
+                case 'weather_data':
+                    weatherData = data.data;
+                    updateWeatherDisplay();
+                    break;
+                    
+                case 'flight_stats':
+                    flightStats = data.data;
+                    updateFlightStatsDisplay();
+                    break;
+                    
+                case 'landing_stats':
+                    landingStats = data.data;
+                    showLandingPopup();
+                    break;
+                    
+                case 'multiplayer_data':
+                    multiplayerPilots = data.data;
+                    updateMultiplayerMarkers();
+                    break;
+                    
+                case 'flight_history':
+                    flightHistory = data.data;
+                    displayFlightHistory();
                     break;
             }
         }
@@ -1298,11 +1622,11 @@ case 'autopilot_state':
             }
         }
 
-function updateAutopilotUI(data) {
-    // Store autopilot state globally for PFD access
-    window.lastAutopilotState = data;
-    
-    updateToggle('apMaster', data.master);
+        function updateAutopilotUI(data) {
+            // Store autopilot state globally for PFD access
+            window.lastAutopilotState = data;
+            
+            updateToggle('apMaster', data.master);
             updateToggle('apAlt', data.altitude);
             updateToggle('apHdg', data.heading);
             updateToggle('apVS', data.vs);
@@ -1335,61 +1659,62 @@ function updateAutopilotUI(data) {
             updateToggle('lightRecognition', data.lightRecognition);
             updateToggle('noSmokingSwitch', data.noSmokingSwitch);
             updateToggle('seatbeltsSwitch', data.seatbeltsSwitch);
+            
             // Update all engines button based on any engine running
-const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
-updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
+            const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
+            updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
 
-// Update engine indicators
-updateEngineIndicators(data);
+            // Update engine indicators
+            updateEngineIndicators(data);
             
             updateFlightSummary(data);
             updateAutopilotStatus(data);
         }
 
-function updateEngineIndicators(data) {
-    // Determine number of engines
-    const hasEngine3 = data.engine3N2 !== undefined && data.engine3N2 > 0;
-    const hasEngine4 = data.engine4N2 !== undefined && data.engine4N2 > 0;
-    const numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
-    
-    // Get or create indicator container
-    let indicatorContainer = document.getElementById('engineIndicators');
-    if (!indicatorContainer) {
-        // Create it if it doesn't exist
-        const allEnginesRow = document.querySelector('#allEngines').parentElement;
-        indicatorContainer = document.createElement('div');
-        indicatorContainer.id = 'engineIndicators';
-        indicatorContainer.style.display = 'flex';
-        indicatorContainer.style.gap = '5px';
-        indicatorContainer.style.alignItems = 'center';
-        
-        // Insert between label and button
-        const label = allEnginesRow.querySelector('.control-label');
-        label.parentNode.insertBefore(indicatorContainer, label.nextSibling);
-    }
-    
-    // Clear and rebuild indicators
-    indicatorContainer.innerHTML = '';
-    
-    const engineStates = [
-        data.engine1N2 > 10,
-        data.engine2N2 > 10,
-        data.engine3N2 > 10,
-        data.engine4N2 > 10
-    ];
-    
-    for (let i = 0; i < numEngines; i++) {
-        const indicator = document.createElement('div');
-        indicator.style.width = '12px';
-        indicator.style.height = '12px';
-        indicator.style.borderRadius = '2px';
-        indicator.style.background = engineStates[i] ? '#167fac' : '#333';
-        indicator.style.transition = 'background 0.3s';
-        indicatorContainer.appendChild(indicator);
-    }
-}
+        function updateEngineIndicators(data) {
+            // Determine number of engines
+            const hasEngine3 = data.engine3N2 !== undefined && data.engine3N2 > 0;
+            const hasEngine4 = data.engine4N2 !== undefined && data.engine4N2 > 0;
+            const numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
+            
+            // Get or create indicator container
+            let indicatorContainer = document.getElementById('engineIndicators');
+            if (!indicatorContainer) {
+                // Create it if it doesn't exist
+                const allEnginesRow = document.querySelector('#allEngines').parentElement;
+                indicatorContainer = document.createElement('div');
+                indicatorContainer.id = 'engineIndicators';
+                indicatorContainer.style.display = 'flex';
+                indicatorContainer.style.gap = '5px';
+                indicatorContainer.style.alignItems = 'center';
+                
+                // Insert between label and button
+                const label = allEnginesRow.querySelector('.control-label');
+                label.parentNode.insertBefore(indicatorContainer, label.nextSibling);
+            }
+            
+            // Clear and rebuild indicators
+            indicatorContainer.innerHTML = '';
+            
+            const engineStates = [
+                data.engine1N2 > 10,
+                data.engine2N2 > 10,
+                data.engine3N2 > 10,
+                data.engine4N2 > 10
+            ];
+            
+            for (let i = 0; i < numEngines; i++) {
+                const indicator = document.createElement('div');
+                indicator.style.width = '12px';
+                indicator.style.height = '12px';
+                indicator.style.borderRadius = '2px';
+                indicator.style.background = engineStates[i] ? '#167fac' : '#333';
+                indicator.style.transition = 'background 0.3s';
+                indicatorContainer.appendChild(indicator);
+            }
+        }
 
-function updateFlightSummary(data) {
+        function updateFlightSummary(data) {
             const speedValue = data.apSpeed !== undefined ? Math.round(data.apSpeed) : '--';
             document.getElementById('summarySpeed').textContent = speedValue;
             
@@ -1400,7 +1725,7 @@ function updateFlightSummary(data) {
             document.getElementById('summaryAltitude').textContent = altValue;
 
             const vsValue = data.apVerticalSpeed !== undefined ? Math.round(data.apVerticalSpeed) : '--';
-document.getElementById('summaryVS').textContent = vsValue;
+            document.getElementById('summaryVS').textContent = vsValue;
             
             document.getElementById('summaryFlaps').textContent = Math.round(data.flaps) + '%';
             
@@ -1446,20 +1771,20 @@ document.getElementById('summaryVS').textContent = vsValue;
             }
         }
 
-function updateAutopilotStatus(data) {
-    updateStatusBadge('apMasterStatus', data.master);
-    updateStatusBadge('apAltStatus', data.altitude);
-    updateStatusBadge('apHdgStatus', data.heading);
-    updateStatusBadge('apSpeedStatus', data.speed);
-    updateStatusBadge('apLocStatus', data.nav);
-    updateStatusBadge('apAppStatus', data.approach);
-    updateStatusBadge('autoThrottleStatus', data.throttle);
-    
-    // Update NAV/GPS status - always active, just shows which mode
-    const navGpsStatus = document.getElementById('apNavGpsStatus');
-    navGpsStatus.classList.add('active');
-    navGpsStatus.textContent = data.navMode ? 'GPS' : 'NAV';
-}
+        function updateAutopilotStatus(data) {
+            updateStatusBadge('apMasterStatus', data.master);
+            updateStatusBadge('apAltStatus', data.altitude);
+            updateStatusBadge('apHdgStatus', data.heading);
+            updateStatusBadge('apSpeedStatus', data.speed);
+            updateStatusBadge('apLocStatus', data.nav);
+            updateStatusBadge('apAppStatus', data.approach);
+            updateStatusBadge('autoThrottleStatus', data.throttle);
+            
+            // Update NAV/GPS status - always active, just shows which mode
+            const navGpsStatus = document.getElementById('apNavGpsStatus');
+            navGpsStatus.classList.add('active');
+            navGpsStatus.textContent = data.navMode ? 'GPS' : 'NAV';
+        }
 
         function updateStatusBadge(id, isActive) {
             const badge = document.getElementById(id);
@@ -1599,13 +1924,13 @@ function updateAutopilotStatus(data) {
 
             userMarker.bindPopup(userPopupContent);
 
-userMarker.on('click', function(e) {
-    L.DomEvent.stopPropagation(e);
-    selectedAircraft = { isUser: true };
-    updateUserAircraftDetails();
-    updateMap(lat, lon, heading);
-    updateNearbyAircraftList();
-});
+            userMarker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                selectedAircraft = { isUser: true };
+                updateUserAircraftDetails();
+                updateMap(lat, lon, heading);
+                updateNearbyAircraftList();
+            });
             
             aircraftMarkers.push(userMarker);
             
@@ -1659,58 +1984,66 @@ userMarker.on('click', function(e) {
                     aircraftMarkers.push(labelMarker);
                 }
             });
+            
+            // Update multiplayer markers
+            updateMultiplayerMarkers();
+            
+            // Update airport markers if enabled
+            if (showAirports) {
+                displayNearbyAirports();
+            }
         }
 
-function updateUserAircraftDetails() {
-    const detailsPanel = document.getElementById('aircraftDetails');
-    if (!detailsPanel) return;
-    
-    const callsign = currentFlightData.atcId || "Your Aircraft";
-    
-    let flightInfo = "";
-    if (currentFlightData.atcAirline && currentFlightData.atcFlightNumber) {
-        flightInfo = currentFlightData.atcAirline + " " + currentFlightData.atcFlightNumber;
-    } else if (currentFlightData.atcAirline) {
-        flightInfo = currentFlightData.atcAirline;
-    }
-    
-    const aircraftModel = currentFlightData.atcModel || currentFlightData.atcType || "User Aircraft";
-    
-    const routeInfo = (currentFlightData.flightPlanOrigin && currentFlightData.flightPlanDestination) 
-        ? currentFlightData.flightPlanOrigin + " → " + currentFlightData.flightPlanDestination 
-        : "";
-    
-    let html = '<h4 style="margin-top:0">' + callsign + '</h4>';
-    
-    if (flightInfo) {
-        html += '<p><strong>Flight:</strong> ' + flightInfo + '</p>';
-    }
-    
-    html += '<p><strong>Aircraft:</strong> ' + aircraftModel + '</p>';
-    
-    if (routeInfo) {
-        html += '<p><strong>Route:</strong> ' + routeInfo + '</p>';
-    }
-    
-    html += '<div class="detail-row">' +
-            '<span class="detail-label">Departure:</span>' +
-            '<span class="detail-value">' + (currentFlightData.flightPlanOrigin || 'N/A') + '</span>' +
-            '</div>' +
-            '<div class="detail-row">' +
-            '<span class="detail-label">Destination:</span>' +
-            '<span class="detail-value">' + (currentFlightData.flightPlanDestination || 'N/A') + '</span>' +
-            '</div>' +
-            '<div class="detail-row">' +
-            '<span class="detail-label">Speed:</span>' +
-            '<span class="detail-value">' + Math.round(currentFlightData.groundSpeed || 0) + ' kts</span>' +
-            '</div>' +
-            '<div class="detail-row">' +
-            '<span class="detail-label">Altitude:</span>' +
-            '<span class="detail-value">' + Math.round(currentFlightData.altitude || 0) + ' ft</span>' +
-            '</div>';
-    
-    detailsPanel.innerHTML = html;
-}
+        function updateUserAircraftDetails() {
+            const detailsPanel = document.getElementById('aircraftDetails');
+            if (!detailsPanel) return;
+            
+            const callsign = currentFlightData.atcId || "Your Aircraft";
+            
+            let flightInfo = "";
+            if (currentFlightData.atcAirline && currentFlightData.atcFlightNumber) {
+                flightInfo = currentFlightData.atcAirline + " " + currentFlightData.atcFlightNumber;
+            } else if (currentFlightData.atcAirline) {
+                flightInfo = currentFlightData.atcAirline;
+            }
+            
+            const aircraftModel = currentFlightData.atcModel || currentFlightData.atcType || "User Aircraft";
+            
+            const routeInfo = (currentFlightData.flightPlanOrigin && currentFlightData.flightPlanDestination) 
+                ? currentFlightData.flightPlanOrigin + " → " + currentFlightData.flightPlanDestination 
+                : "";
+            
+            let html = '<h4 style="margin-top:0">' + callsign + '</h4>';
+            
+            if (flightInfo) {
+                html += '<p><strong>Flight:</strong> ' + flightInfo + '</p>';
+            }
+            
+            html += '<p><strong>Aircraft:</strong> ' + aircraftModel + '</p>';
+            
+            if (routeInfo) {
+                html += '<p><strong>Route:</strong> ' + routeInfo + '</p>';
+            }
+            
+            html += '<div class="detail-row">' +
+                    '<span class="detail-label">Departure:</span>' +
+                    '<span class="detail-value">' + (currentFlightData.flightPlanOrigin || 'N/A') + '</span>' +
+                    '</div>' +
+                    '<div class="detail-row">' +
+                    '<span class="detail-label">Destination:</span>' +
+                    '<span class="detail-value">' + (currentFlightData.flightPlanDestination || 'N/A') + '</span>' +
+                    '</div>' +
+                    '<div class="detail-row">' +
+                    '<span class="detail-label">Speed:</span>' +
+                    '<span class="detail-value">' + Math.round(currentFlightData.groundSpeed || 0) + ' kts</span>' +
+                    '</div>' +
+                    '<div class="detail-row">' +
+                    '<span class="detail-label">Altitude:</span>' +
+                    '<span class="detail-value">' + Math.round(currentFlightData.altitude || 0) + ' ft</span>' +
+                    '</div>';
+            
+            detailsPanel.innerHTML = html;
+        }
 
         function updateAircraftDetails(aircraft) {
             const detailsPanel = document.getElementById('aircraftDetails');
@@ -1725,8 +2058,7 @@ function updateUserAircraftDetails() {
             }
             
             let routeInfo = "";
-            if (aircraft
-            .departureAirport && aircraft.destinationAirport) {
+            if (aircraft.departureAirport && aircraft.destinationAirport) {
                 routeInfo = aircraft.departureAirport + " → " + aircraft.destinationAirport;
             } else if (aircraft.destinationAirport) {
                 routeInfo = "To " + aircraft.destinationAirport;
@@ -1814,15 +2146,15 @@ function updateUserAircraftDetails() {
             }
         }
 
-function unlockControls() {
-    const password = document.getElementById('controlPassword').value;
-    ws.send(JSON.stringify({ type: 'request_control', password }));
-    
-    // Save password to localStorage for next time
-    if (password) {
-        localStorage.setItem('p3d_control_password', password);
-    }
-}
+        function unlockControls() {
+            const password = document.getElementById('controlPassword').value;
+            ws.send(JSON.stringify({ type: 'request_control', password }));
+            
+            // Save password to localStorage for next time
+            if (password) {
+                localStorage.setItem('p3d_control_password', password);
+            }
+        }
 
         function togglePause() {
             ws.send(JSON.stringify({ type: 'pause_toggle' }));
@@ -1948,8 +2280,8 @@ function unlockControls() {
         }
 
         function toggleAllEngines() {
-    ws.send(JSON.stringify({ type: 'toggle_all_engines' }));
-}
+            ws.send(JSON.stringify({ type: 'toggle_all_engines' }));
+        }
 
         function toggleSpeedbrake() {
             ws.send(JSON.stringify({ type: 'toggle_speedbrake' }));
@@ -1970,449 +2302,792 @@ function unlockControls() {
         function toggleCabin(cabinType) {
             ws.send(JSON.stringify({ type: 'toggle_cabin', cabinType: cabinType }));
         }
-function initInstruments() {
-    pfdCanvas = document.getElementById('pfdCanvas');
-    pfdCtx = pfdCanvas.getContext('2d');
-    mfdCanvas = document.getElementById('mfdCanvas');
-    mfdCtx = mfdCanvas.getContext('2d');
-    eicasCanvas = document.getElementById('eicasCanvas');
-    eicasCtx = eicasCanvas.getContext('2d');
-    
-    // Start drawing loop
-    requestAnimationFrame(drawInstruments);
-}
 
-function prevEICASPage() {
-    eicasPage = (eicasPage - 1 + 3) % 3;
-    updateEICASPageLabel();
-}
-
-function nextEICASPage() {
-    eicasPage = (eicasPage + 1) % 3;
-    updateEICASPageLabel();
-}
-
-function updateEICASPageLabel() {
-    const labels = ['EICAS DISPLAY', 'EICAS DISPLAY', 'EICAS DISPLAY'];
-    document.getElementById('eicasPageLabel').textContent = labels[eicasPage];
-}
+        // New functions for weather, stats, multiplayer, camera controls, etc.
         
-function drawInstruments() {
-    if (pfdCtx && currentFlightData) {
-        drawPFD();
-    }
-    if (mfdCtx && currentFlightData) {
-        drawMFD();
-    }
-    if (eicasCtx && currentFlightData) {
-        drawEICAS();
-    }
-    requestAnimationFrame(drawInstruments);
-}
-        
-function drawPFD() {
-    const ctx = pfdCtx;
-    const width = pfdCanvas.width;
-    const height = pfdCanvas.height;
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // Clear canvas
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
-    
-    // Get flight data
-    const pitch = currentFlightData.pitch || 0;
-    const roll = currentFlightData.roll || 0;
-    const altitude = currentFlightData.altitude || 0;
-    const speed = currentFlightData.groundSpeed || 0;
-    const heading = currentFlightData.heading || 0;
-    const vs = currentFlightData.verticalSpeed || 0;
-    
-    // Get autopilot status from autopilot state
-    const apData = window.lastAutopilotState || {};
-    const apMaster = apData.master || false;
-    const autoThrottle = apData.throttle || false;
-    
-    // Define the horizon display area (clipped to avoid tapes)
-    const horizonLeft = 75;
-    const horizonRight = width - 95;
-    const horizonTop = 35;
-    const horizonBottom = height - 50;
-    const horizonWidth = horizonRight - horizonLeft;
-    const horizonHeight = horizonBottom - horizonTop;
-    const horizonCenterX = horizonLeft + horizonWidth / 2;
-    const horizonCenterY = horizonTop + horizonHeight / 2;
-    
-    // Draw artificial horizon (clipped with rounded edges effect)
-    ctx.save();
-    
-    // Create rounded rectangle clip path
-    ctx.beginPath();
-    const cornerRadius = 15;
-    ctx.moveTo(horizonLeft + cornerRadius, horizonTop);
-    ctx.lineTo(horizonRight - cornerRadius, horizonTop);
-    ctx.arcTo(horizonRight, horizonTop, horizonRight, horizonTop + cornerRadius, cornerRadius);
-    ctx.lineTo(horizonRight, horizonBottom - cornerRadius);
-    ctx.arcTo(horizonRight, horizonBottom, horizonRight - cornerRadius, horizonBottom, cornerRadius);
-    ctx.lineTo(horizonLeft + cornerRadius, horizonBottom);
-    ctx.arcTo(horizonLeft, horizonBottom, horizonLeft, horizonBottom - cornerRadius, cornerRadius);
-    ctx.lineTo(horizonLeft, horizonTop + cornerRadius);
-    ctx.arcTo(horizonLeft, horizonTop, horizonLeft + cornerRadius, horizonTop, cornerRadius);
-    ctx.closePath();
-    ctx.clip();
-    
-    ctx.translate(horizonCenterX, horizonCenterY);
-    ctx.rotate(roll * Math.PI / 180);
-    
-    // Sky with gradient
-    const skyGrad = ctx.createLinearGradient(0, -height, 0, 0);
-    skyGrad.addColorStop(0, '#0066cc');
-    skyGrad.addColorStop(1, '#0099ff');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(-width, -height - pitch * 2.5, width * 2, height * 2);
-    
-    // Ground with gradient
-    const groundGrad = ctx.createLinearGradient(0, 0, 0, height);
-    groundGrad.addColorStop(0, '#8B4513');
-    groundGrad.addColorStop(1, '#654321');
-    ctx.fillStyle = groundGrad;
-    ctx.fillRect(-width, -pitch * 2.5, width * 2, height * 2);
-    
-    // Horizon line - thicker and white
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(-width, -pitch * 2.5);
-    ctx.lineTo(width, -pitch * 2.5);
-    ctx.stroke();
-    
-    // Pitch ladder
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.font = 'bold 12px Arial';
-    
-    for (let p = -90; p <= 90; p += 10) {
-        if (p === 0) continue;
-        const y = (pitch - p) * 2.5;
-        const lineWidth = p % 20 === 0 ? 50 : 25;
-        
-        // Pitch lines
-        ctx.beginPath();
-        ctx.moveTo(-lineWidth / 2, y);
-        ctx.lineTo(lineWidth / 2, y);
-        ctx.stroke();
-        
-        // Pitch numbers for major marks
-        if (p % 20 === 0) {
-            ctx.fillStyle = '#fff';
-            ctx.textAlign = 'right';
-            ctx.fillText(Math.abs(p), -lineWidth / 2 - 8, y + 5);
-            ctx.textAlign = 'left';
-            ctx.fillText(Math.abs(p), lineWidth / 2 + 8, y + 5);
-        }
-    }
-    
-    ctx.restore();
-    
-    // Fixed aircraft symbol - yellow with black outline
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(horizonCenterX - 40, horizonCenterY);
-    ctx.lineTo(horizonCenterX - 12, horizonCenterY);
-    ctx.moveTo(horizonCenterX + 12, horizonCenterY);
-    ctx.lineTo(horizonCenterX + 40, horizonCenterY);
-    ctx.moveTo(horizonCenterX, horizonCenterY);
-    ctx.lineTo(horizonCenterX, horizonCenterY + 10);
-    ctx.stroke();
-    
-    ctx.strokeStyle = '#ffff00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(horizonCenterX - 40, horizonCenterY);
-    ctx.lineTo(horizonCenterX - 12, horizonCenterY);
-    ctx.moveTo(horizonCenterX + 12, horizonCenterY);
-    ctx.lineTo(horizonCenterX + 40, horizonCenterY);
-    ctx.moveTo(horizonCenterX, horizonCenterY);
-    ctx.lineTo(horizonCenterX, horizonCenterY + 10);
-    ctx.stroke();
-    
-    // Center dot
-    ctx.fillStyle = '#ffff00';
-    ctx.beginPath();
-    ctx.arc(horizonCenterX, horizonCenterY, 3, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Roll indicator at top
-    ctx.save();
-    ctx.translate(horizonCenterX, 55);
-    
-    // Roll arc
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(0, 0, 70, -Math.PI * 0.65, -Math.PI * 0.35, false);
-    ctx.stroke();
-    
-    // Roll markers
-    [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60].forEach(angle => {
-        const rad = angle * Math.PI / 180 - Math.PI / 2;
-        const isLarge = [0, -30, -45, 30, 45].includes(angle);
-        const length = isLarge ? 12 : 8;
-        const x1 = Math.cos(rad) * 70;
-        const y1 = Math.sin(rad) * 70;
-        const x2 = Math.cos(rad) * (70 - length);
-        const y2 = Math.sin(rad) * (70 - length);
-        
-        ctx.lineWidth = isLarge ? 2 : 1;
-        ctx.beginPath();
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-        ctx.stroke();
-    });
-    
-    // Roll pointer (yellow triangle)
-    ctx.rotate(-roll * Math.PI / 180);
-    ctx.fillStyle = '#ffff00';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(0, -70);
-    ctx.lineTo(-6, -58);
-    ctx.lineTo(6, -58);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    
-    // Bank angle indicator (white triangle at top)
-    ctx.rotate(roll * Math.PI / 180);
-    ctx.fillStyle = '#fff';
-    ctx.beginPath();
-    ctx.moveTo(0, -72);
-    ctx.lineTo(-5, -62);
-    ctx.lineTo(5, -62);
-    ctx.closePath();
-    ctx.fill();
-    
-    ctx.restore();
-    
-    // Speed tape (left side) - more realistic
-    const tapeX = 15;
-    const tapeY = horizonTop;
-    const tapeWidth = 50;
-    const tapeHeight = horizonHeight;
-    
-    // Speed tape background
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
-    ctx.fillRect(tapeX, tapeY, tapeWidth, tapeHeight);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(tapeX, tapeY, tapeWidth, tapeHeight);
-    
-    // Speed markings
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'right';
-    
-    for (let s = Math.floor(speed / 20) * 20 - 80; s <= speed + 80; s += 20) {
-        if (s < 0) continue;
-        const y = horizonCenterY - (s - speed) * 1.5;
-        if (y >= tapeY + 10 && y <= tapeY + tapeHeight - 10) {
-            ctx.fillStyle = '#fff';
-            ctx.fillText(s, tapeX + tapeWidth - 5, y + 5);
+        // Weather Display
+        function updateWeatherDisplay() {
+            const weatherContainer = document.getElementById('weatherInfo');
+            if (!weatherContainer) return;
             
-            // Tick marks
+            const temp = weatherData.temperature ? Math.round(weatherData.temperature) : '--';
+            const pressure = weatherData.pressure ? Math.round(weatherData.pressure) : '----';
+            const windSpeed = weatherData.windSpeed ? Math.round(weatherData.windSpeed) : '--';
+            const windDir = weatherData.windDirection ? Math.round(weatherData.windDirection) : '---';
+            const visibility = weatherData.visibility ? weatherData.visibility.toFixed(1) : '--';
+            
+            weatherContainer.innerHTML = \`
+                <div class="weather-row">
+                    <span>🌡️ \${temp}°C</span>
+                    <span>🎚️ \${pressure} mb</span>
+                </div>
+                <div class="weather-row">
+                    <span>💨 \${windSpeed}kt @ \${windDir}°</span>
+                    <span>👁️ \${visibility} mi</span>
+                </div>
+            \`;
+        }
+        
+        // Flight Stats Display
+        function updateFlightStatsDisplay() {
+            const statsContainer = document.getElementById('flightStatsInfo');
+            if (!statsContainer) return;
+            
+            const isLogging = flightStats.isLogging;
+            const flightTime = flightStats.flightTime ? flightStats.flightTime.toFixed(1) : '0.0';
+            const maxAlt = flightStats.maxAltitude ? Math.round(flightStats.maxAltitude).toLocaleString() : '0';
+            const maxSpeed = flightStats.maxSpeed ? Math.round(flightStats.maxSpeed) : '0';
+            const totalFlights = flightStats.totalFlights || 0;
+            const totalHours = flightStats.totalHours ? flightStats.totalHours.toFixed(1) : '0.0';
+            
+            statsContainer.innerHTML = \`
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-label">Current Flight</span>
+                        <span class="stat-value \${isLogging ? 'recording' : ''}">\${isLogging ? '🔴 ' : ''}\${flightTime} min</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Alt</span>
+                        <span class="stat-value">\${maxAlt} ft</span>
+                    </div>
+                </div>
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <span class="stat-label">Max Speed</span>
+                        <span class="stat-value">\${maxSpeed} kts</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Total Flights</span>
+                        <span class="stat-value">\${totalFlights}</span>
+                    </div>
+                </div>
+                <div class="stats-bottom">
+                    <span>Total Hours: \${totalHours}h</span>
+                </div>
+            \`;
+        }
+        
+        // Landing Stats Popup
+        function showLandingPopup() {
+            const overlay = document.createElement('div');
+            overlay.id = 'landingPopup';
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: fadeIn 0.3s;';
+            
+            const vs = Math.abs(Math.round(landingStats.verticalSpeed));
+            const speed = Math.round(landingStats.speed);
+            const gForce = landingStats.gForce.toFixed(2);
+            const grade = landingStats.grade;
+            
+            let gradeColor = '#00ff00';
+            let gradeEmoji = '🟢';
+            if (grade === 'SMOOTH') { gradeColor = '#4CAF50'; gradeEmoji = '🟢'; }
+            else if (grade === 'FIRM') { gradeColor = '#ff8800'; gradeEmoji = '🟡'; }
+            else if (grade === 'HARD') { gradeColor = '#ff0000'; gradeEmoji = '🔴'; }
+            else if (grade === 'CRASH') { gradeColor = '#8B0000'; gradeEmoji = '💥'; }
+            else if (grade === 'BUTTER') { gradeColor = '#FFD700'; gradeEmoji = '⭐'; }
+            
+            overlay.innerHTML = \`
+                <div style="background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 40px; border-radius: 20px; text-align: center; border: 3px solid \${gradeColor}; max-width: 350px; animation: slideUp 0.5s;">
+                    <div style="font-size: 60px; margin-bottom: 15px;">\${gradeEmoji}</div>
+                    <h2 style="margin: 0 0 10px 0; color: \${gradeColor}; font-size: 32px;">\${grade}</h2>
+                    <p style="color: #888; font-size: 14px; margin-bottom: 25px;">Landing Performance</p>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                        <div style="background: #0d0d0d; padding: 15px; border-radius: 10px;">
+                            <div style="color: #888; font-size: 11px; margin-bottom: 5px;">VERTICAL SPEED</div>
+                            <div style="color: #fff; font-size: 24px; font-weight: bold;">\${vs}</div>
+                            <div style="color: #888; font-size: 10px;">fpm</div>
+                        </div>
+                        <div style="background: #0d0d0d; padding: 15px; border-radius: 10px;">
+                            <div style="color: #888; font-size: 11px; margin-bottom: 5px;">TOUCHDOWN SPD</div>
+                            <div style="color: #fff; font-size: 24px; font-weight: bold;">\${speed}</div>
+                            <div style="color: #888; font-size: 10px;">knots</div>
+                        </div>
+                    </div>
+                    
+                    <div style="background: #0d0d0d; padding: 12px; border-radius: 10px; margin-bottom: 20px;">
+                        <span style="color: #888; font-size: 11px;">G-FORCE: </span>
+                        <span style="color: #167fac; font-size: 18px; font-weight: bold;">\${gForce}G</span>
+                    </div>
+                    
+                    <button onclick="closeLandingPopup()" style="width: 100%; padding: 14px; background: \${gradeColor}; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer;">
+                        Continue
+                    </button>
+                </div>
+            \`;
+            
+            document.body.appendChild(overlay);
+            
+            // Auto close after 10 seconds
+            setTimeout(() => {
+                closeLandingPopup();
+            }, 10000);
+        }
+
+        function closeLandingPopup() {
+            const popup = document.getElementById('landingPopup');
+            if (popup) {
+                popup.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => popup.remove(), 300);
+            }
+        }
+        
+        // Multiplayer functions
+        function updateMultiplayerMarkers() {
+            if (!map || !showMultiplayer) return;
+            
+            // Remove old multiplayer markers (keep user and AI)
+            aircraftMarkers.forEach(marker => {
+                if (marker.options && marker.options.isMultiplayer) {
+                    map.removeLayer(marker);
+                }
+            });
+            
+            multiplayerPilots.forEach(pilot => {
+                const marker = L.marker([pilot.latitude, pilot.longitude], {
+                    icon: createMultiplayerIcon(pilot.heading),
+                    isMultiplayer: true
+                }).addTo(map);
+                
+                const popupContent = \`
+                    <div style="min-width:200px">
+                        <h4 style="margin:0 0 5px 0; color: #00ffff;">\${pilot.callsign}</h4>
+                        <p style="margin:0 0 5px 0">Aircraft: \${pilot.aircraft}</p>
+                        <p style="margin:0 0 5px 0">Speed: \${Math.round(pilot.groundSpeed)} kts</p>
+                        <p style="margin:0 0 5px 0">Altitude: \${Math.round(pilot.altitude)} ft</p>
+                        <p style="margin:0; color: #00ffff; font-size: 11px;">👥 Online Player</p>
+                    </div>
+                \`;
+                
+                marker.bindPopup(popupContent);
+                aircraftMarkers.push(marker);
+                
+                if (showAircraftLabels) {
+                    const label = L.divIcon({
+                        html: \`<div style="background:rgba(0,255,255,0.7);color:#000;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap;font-weight:bold;">\${pilot.callsign}</div>\`,
+                        className: '',
+                        iconSize: [100, 20],
+                        iconAnchor: [50, -10]
+                    });
+                    
+                    const labelMarker = L.marker([pilot.latitude, pilot.longitude], { 
+                        icon: label,
+                        isMultiplayer: true 
+                    }).addTo(map);
+                    aircraftMarkers.push(labelMarker);
+                }
+            });
+        }
+
+        function createMultiplayerIcon(heading) {
+            return L.divIcon({
+                html: \`<div style="transform: rotate(\${heading}deg);"><svg width="20" height="20" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#00ffff" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
+            });
+        }
+
+        function toggleMultiplayer() {
+            showMultiplayer = !showMultiplayer;
+            const btn = document.getElementById('toggleMultiplayerBtn');
+            btn.textContent = showMultiplayer ? 'Hide Players' : 'Show Players';
+            btn.className = showMultiplayer ? 'btn btn-primary' : 'btn btn-secondary';
+            
+            if (showMultiplayer) {
+                ws.send(JSON.stringify({ type: 'request_multiplayer' }));
+            } else {
+                // Remove multiplayer markers
+                aircraftMarkers = aircraftMarkers.filter(marker => {
+                    if (marker.options && marker.options.isMultiplayer) {
+                        map.removeLayer(marker);
+                        return false;
+                    }
+                    return true;
+                });
+            }
+        }
+        
+        // Camera controls
+        function changeView(view) {
+            ws.send(JSON.stringify({ type: 'camera_view', view: view }));
+        }
+        
+        // Request multiplayer data periodically
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN && showMultiplayer) {
+                ws.send(JSON.stringify({ type: 'request_multiplayer' }));
+            }
+        }, 5000); // Every 5 seconds
+        
+        // Flight history
+        function showFlightHistory() {
+            ws.send(JSON.stringify({ type: 'request_flight_history' }));
+        }
+
+        function displayFlightHistory() {
+            // Create popup to show flight history
+            const overlay = document.createElement('div');
+            overlay.id = 'historyPopup';
+            overlay.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 10000; padding: 20px; overflow-y: auto;';
+            
+            let historyHTML = '<div style="background: #1a1a1a; padding: 20px; border-radius: 15px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto;">';
+            historyHTML += '<h2 style="margin: 0 0 20px 0; color: #167fac;">Flight History</h2>';
+            
+            if (flightHistory.length === 0) {
+                historyHTML += '<p style="color: #888; text-align: center;">No flights recorded yet</p>';
+            } else {
+                flightHistory.reverse().forEach(flight => {
+                    const date = new Date(flight.StartTime).toLocaleDateString();
+                    const time = new Date(flight.StartTime).toLocaleTimeString();
+                    const duration = flight.FlightTime ? flight.FlightTime.toFixed(0) : '0';
+                    const landingGrade = flight.Landing ? flight.Landing.Grade : 'N/A';
+                    let gradeColor = '#888';
+                    if (landingGrade === 'BUTTER') gradeColor = '#FFD700';
+                    else if (landingGrade === 'SMOOTH') gradeColor = '#4CAF50';
+                    else if (landingGrade === 'FIRM') gradeColor = '#ff8800';
+                    else if (landingGrade === 'HARD') gradeColor = '#ff0000';
+                    
+                    historyHTML += \`
+                        <div style="background: #0d0d0d; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid \${gradeColor};">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                                <span style="color: #167fac; font-weight: bold;">\${flight.Origin || 'Unknown'} → \${flight.Destination || 'Unknown'}</span>
+                                <span style="color: #888; font-size: 12px;">\${date}</span>
+                            </div>
+                            <div style="color: #ccc; font-size: 13px; margin-bottom: 5px;">\${flight.Aircraft || 'Unknown Aircraft'}</div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: #888;">
+                                <span>Duration: \${duration} min</span>
+                                <span>Landing: <span style="color: \${gradeColor}; font-weight: bold;">\${landingGrade}</span></span>
+                            </div>
+                        </div>
+                    \`;
+                });
+            }
+            
+            historyHTML += '<button onclick="closeHistoryPopup()" style="width: 100%; padding: 14px; background: #167fac; color: #fff; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px;">Close</button>';
+            historyHTML += '</div>';
+            
+            overlay.innerHTML = historyHTML;
+            document.body.appendChild(overlay);
+        }
+
+        function closeHistoryPopup() {
+            const popup = document.getElementById('historyPopup');
+            if (popup) popup.remove();
+        }
+
+        // Airport Information Functions
+        function toggleAirports() {
+            showAirports = !showAirports;
+            const btn = document.getElementById('toggleAirportsBtn');
+            
+            if (showAirports) {
+                btn.textContent = 'Hide Airports';
+                btn.className = 'btn btn-primary';
+                displayNearbyAirports();
+            } else {
+                btn.textContent = 'Show Airports';
+                btn.className = 'btn btn-secondary';
+                removeAirportMarkers();
+            }
+        }
+
+        function displayNearbyAirports() {
+            if (!map || !userLat || !userLon) return;
+            
+            removeAirportMarkers();
+            
+            // Find airports within 200nm
+            const nearbyAirports = majorAirports
+                .map(apt => ({
+                    ...apt,
+                    distance: CalculateDistance(userLat, userLon, apt.lat, apt.lon)
+                }))
+                .filter(apt => apt.distance < 200)
+                .sort((a, b) => a.distance - b.distance)
+                .slice(0, 10);
+            
+            nearbyAirports.forEach(apt => {
+                const marker = L.marker([apt.lat, apt.lon], {
+                    icon: L.divIcon({
+                        html: \`<div class="airport-marker">✈ \${apt.icao}</div>\`,
+                        className: '',
+                        iconSize: [60, 20],
+                        iconAnchor: [30, 10]
+                    })
+                }).addTo(map);
+                
+                marker.bindPopup(\`
+                    <div style="min-width:180px">
+                        <h4 style="margin:0 0 5px 0; color: #ff8800;">\${apt.icao}</h4>
+                        <p style="margin:0 0 5px 0; font-size: 12px;">\${apt.name}</p>
+                        <p style="margin:0; font-size: 12px; color: #888;">Distance: \${apt.distance.toFixed(1)} nm</p>
+                    </div>
+                \`);
+                
+                airportMarkers.push(marker);
+            });
+        }
+
+        function removeAirportMarkers() {
+            airportMarkers.forEach(marker => map.removeLayer(marker));
+            airportMarkers = [];
+        }
+
+        function CalculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 3440.065; // Earth's radius in nautical miles
+            const dLat = (lat2 - lat1) * Math.PI / 180.0;
+            const dLon = (lon2 - lon1) * Math.PI / 180.0;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180.0) * Math.cos(lat2 * Math.PI / 180.0) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
+        }
+
+        function initInstruments() {
+            pfdCanvas = document.getElementById('pfdCanvas');
+            pfdCtx = pfdCanvas.getContext('2d');
+            mfdCanvas = document.getElementById('mfdCanvas');
+            mfdCtx = mfdCanvas.getContext('2d');
+            eicasCanvas = document.getElementById('eicasCanvas');
+            eicasCtx = eicasCanvas.getContext('2d');
+            
+            // Start drawing loop
+            requestAnimationFrame(drawInstruments);
+        }
+
+        function prevEICASPage() {
+            eicasPage = (eicasPage - 1 + 3) % 3;
+            updateEICASPageLabel();
+        }
+
+        function nextEICASPage() {
+            eicasPage = (eicasPage + 1) % 3;
+            updateEICASPageLabel();
+        }
+
+        function updateEICASPageLabel() {
+            const labels = ['EICAS DISPLAY', 'EICAS DISPLAY', 'EICAS DISPLAY'];
+            document.getElementById('eicasPageLabel').textContent = labels[eicasPage];
+        }
+            
+        function drawInstruments() {
+            if (pfdCtx && currentFlightData) {
+                drawPFD();
+            }
+            if (mfdCtx && currentFlightData) {
+                drawMFD();
+            }
+            if (eicasCtx && currentFlightData) {
+                drawEICAS();
+            }
+            requestAnimationFrame(drawInstruments);
+        }
+            
+        function drawPFD() {
+            const ctx = pfdCtx;
+            const width = pfdCanvas.width;
+            const height = pfdCanvas.height;
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            // Get flight data
+            const pitch = currentFlightData.pitch || 0;
+            const roll = currentFlightData.roll || 0;
+            const altitude = currentFlightData.altitude || 0;
+            const speed = currentFlightData.groundSpeed || 0;
+            const heading = currentFlightData.heading || 0;
+            const vs = currentFlightData.verticalSpeed || 0;
+            
+            // Get autopilot status from autopilot state
+            const apData = window.lastAutopilotState || {};
+            const apMaster = apData.master || false;
+            const autoThrottle = apData.throttle || false;
+            
+            // Define the horizon display area (clipped to avoid tapes)
+            const horizonLeft = 75;
+            const horizonRight = width - 95;
+            const horizonTop = 35;
+            const horizonBottom = height - 50;
+            const horizonWidth = horizonRight - horizonLeft;
+            const horizonHeight = horizonBottom - horizonTop;
+            const horizonCenterX = horizonLeft + horizonWidth / 2;
+            const horizonCenterY = horizonTop + horizonHeight / 2;
+            
+            // Draw artificial horizon (clipped with rounded edges effect)
+            ctx.save();
+            
+            // Create rounded rectangle clip path
+            ctx.beginPath();
+            const cornerRadius = 15;
+            ctx.moveTo(horizonLeft + cornerRadius, horizonTop);
+            ctx.lineTo(horizonRight - cornerRadius, horizonTop);
+            ctx.arcTo(horizonRight, horizonTop, horizonRight, horizonTop + cornerRadius, cornerRadius);
+            ctx.lineTo(horizonRight, horizonBottom - cornerRadius);
+            ctx.arcTo(horizonRight, horizonBottom, horizonRight - cornerRadius, horizonBottom, cornerRadius);
+            ctx.lineTo(horizonLeft + cornerRadius, horizonBottom);
+            ctx.arcTo(horizonLeft, horizonBottom, horizonLeft, horizonBottom - cornerRadius, cornerRadius);
+            ctx.lineTo(horizonLeft, horizonTop + cornerRadius);
+            ctx.arcTo(horizonLeft, horizonTop, horizonLeft + cornerRadius, horizonTop, cornerRadius);
+            ctx.closePath();
+            ctx.clip();
+            
+            ctx.translate(horizonCenterX, horizonCenterY);
+            ctx.rotate(roll * Math.PI / 180);
+            
+            // Sky with gradient
+            const skyGrad = ctx.createLinearGradient(0, -height, 0, 0);
+            skyGrad.addColorStop(0, '#0066cc');
+            skyGrad.addColorStop(1, '#0099ff');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(-width, -height - pitch * 2.5, width * 2, height * 2);
+            
+            // Ground with gradient
+            const groundGrad = ctx.createLinearGradient(0, 0, 0, height);
+            groundGrad.addColorStop(0, '#8B4513');
+            groundGrad.addColorStop(1, '#654321');
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(-width, -pitch * 2.5, width * 2, height * 2);
+            
+            // Horizon line - thicker and white
             ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(-width, -pitch * 2.5);
+            ctx.lineTo(width, -pitch * 2.5);
+            ctx.stroke();
+            
+            // Pitch ladder
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.font = 'bold 12px Arial';
+            
+            for (let p = -90; p <= 90; p += 10) {
+                if (p === 0) continue;
+                const y = (pitch - p) * 2.5;
+                const lineWidth = p % 20 === 0 ? 50 : 25;
+                
+                // Pitch lines
+                ctx.beginPath();
+                ctx.moveTo(-lineWidth / 2, y);
+                ctx.lineTo(lineWidth / 2, y);
+                ctx.stroke();
+                
+                // Pitch numbers for major marks
+                if (p % 20 === 0) {
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(Math.abs(p), -lineWidth / 2 - 8, y + 5);
+                    ctx.textAlign = 'left';
+                    ctx.fillText(Math.abs(p), lineWidth / 2 + 8, y + 5);
+                }
+            }
+            
+            ctx.restore();
+            
+            // Fixed aircraft symbol - yellow with black outline
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(horizonCenterX - 40, horizonCenterY);
+            ctx.lineTo(horizonCenterX - 12, horizonCenterY);
+            ctx.moveTo(horizonCenterX + 12, horizonCenterY);
+            ctx.lineTo(horizonCenterX + 40, horizonCenterY);
+            ctx.moveTo(horizonCenterX, horizonCenterY);
+            ctx.lineTo(horizonCenterX, horizonCenterY + 10);
+            ctx.stroke();
+            
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(horizonCenterX - 40, horizonCenterY);
+            ctx.lineTo(horizonCenterX - 12, horizonCenterY);
+            ctx.moveTo(horizonCenterX + 12, horizonCenterY);
+            ctx.lineTo(horizonCenterX + 40, horizonCenterY);
+            ctx.moveTo(horizonCenterX, horizonCenterY);
+            ctx.lineTo(horizonCenterX, horizonCenterY + 10);
+            ctx.stroke();
+            
+            // Center dot
+            ctx.fillStyle = '#ffff00';
+            ctx.beginPath();
+            ctx.arc(horizonCenterX, horizonCenterY, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Roll indicator at top
+            ctx.save();
+            ctx.translate(horizonCenterX, 55);
+            
+            // Roll arc
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, 0, 70, -Math.PI * 0.65, -Math.PI * 0.35, false);
+            ctx.stroke();
+            
+            // Roll markers
+            [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60].forEach(angle => {
+                const rad = angle * Math.PI / 180 - Math.PI / 2;
+                const isLarge = [0, -30, -45, 30, 45].includes(angle);
+                const length = isLarge ? 12 : 8;
+                const x1 = Math.cos(rad) * 70;
+                const y1 = Math.sin(rad) * 70;
+                const x2 = Math.cos(rad) * (70 - length);
+                const y2 = Math.sin(rad) * (70 - length);
+                
+                ctx.lineWidth = isLarge ? 2 : 1;
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            });
+            
+            // Roll pointer (yellow triangle)
+            ctx.rotate(-roll * Math.PI / 180);
+            ctx.fillStyle = '#ffff00';
+            ctx.strokeStyle = '#000';
             ctx.lineWidth = 1;
             ctx.beginPath();
-            ctx.moveTo(tapeX, y);
-            ctx.lineTo(tapeX + 10, y);
+            ctx.moveTo(0, -70);
+            ctx.lineTo(-6, -58);
+            ctx.lineTo(6, -58);
+            ctx.closePath();
+            ctx.fill();
             ctx.stroke();
-        }
-    }
-    
-    // Speed readout box
-    ctx.fillStyle = '#000';
-    ctx.fillRect(tapeX, horizonCenterY - 18, tapeWidth, 36);
-    ctx.strokeStyle = '#ffff00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(tapeX, horizonCenterY - 18, tapeWidth, 36);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 20px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(Math.round(speed), tapeX + tapeWidth / 2, horizonCenterY + 7);
-    
-    // Altitude tape (right side)
-    const altTapeX = width - tapeX - tapeWidth - 20;
-    
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
-    ctx.fillRect(altTapeX, tapeY, tapeWidth, tapeHeight);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(altTapeX, tapeY, tapeWidth, tapeHeight);
-    
-    // Altitude markings
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'left';
-    
-    const altStep = 100;
-    for (let a = Math.floor(altitude / altStep) * altStep - 500; a <= altitude + 500; a += altStep) {
-        const y = horizonCenterY - (a - altitude) * 0.4;
-        if (y >= tapeY + 10 && y <= tapeY + tapeHeight - 10) {
-            if (a % 200 === 0) {
-                ctx.fillStyle = '#fff';
-                ctx.fillText(a, altTapeX + 8, y + 5);
+            
+            // Bank angle indicator (white triangle at top)
+            ctx.rotate(roll * Math.PI / 180);
+            ctx.fillStyle = '#fff';
+            ctx.beginPath();
+            ctx.moveTo(0, -72);
+            ctx.lineTo(-5, -62);
+            ctx.lineTo(5, -62);
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+            
+            // Speed tape (left side) - more realistic
+            const tapeX = 15;
+            const tapeY = horizonTop;
+            const tapeWidth = 50;
+            const tapeHeight = horizonHeight;
+            
+            // Speed tape background
+            ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            ctx.fillRect(tapeX, tapeY, tapeWidth, tapeHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(tapeX, tapeY, tapeWidth, tapeHeight);
+            
+            // Speed markings
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'right';
+            
+            for (let s = Math.floor(speed / 20) * 20 - 80; s <= speed + 80; s += 20) {
+                if (s < 0) continue;
+                const y = horizonCenterY - (s - speed) * 1.5;
+                if (y >= tapeY + 10 && y <= tapeY + tapeHeight - 10) {
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(s, tapeX + tapeWidth - 5, y + 5);
+                    
+                    // Tick marks
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(tapeX, y);
+                    ctx.lineTo(tapeX + 10, y);
+                    ctx.stroke();
+                }
+            }
+            
+            // Speed readout box
+            ctx.fillStyle = '#000';
+            ctx.fillRect(tapeX, horizonCenterY - 18, tapeWidth, 36);
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(tapeX, horizonCenterY - 18, tapeWidth, 36);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 20px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.round(speed), tapeX + tapeWidth / 2, horizonCenterY + 7);
+            
+            // Altitude tape (right side)
+            const altTapeX = width - tapeX - tapeWidth - 20;
+            
+            ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            ctx.fillRect(altTapeX, tapeY, tapeWidth, tapeHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(altTapeX, tapeY, tapeWidth, tapeHeight);
+            
+            // Altitude markings
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'left';
+            
+            const altStep = 100;
+            for (let a = Math.floor(altitude / altStep) * altStep - 500; a <= altitude + 500; a += altStep) {
+                const y = horizonCenterY - (a - altitude) * 0.4;
+                if (y >= tapeY + 10 && y <= tapeY + tapeHeight - 10) {
+                    if (a % 200 === 0) {
+                        ctx.fillStyle = '#fff';
+                        ctx.fillText(a, altTapeX + 8, y + 5);
+                        
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(altTapeX + tapeWidth - 10, y);
+                        ctx.lineTo(altTapeX + tapeWidth, y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            
+            // Altitude readout box
+            ctx.fillStyle = '#000';
+            ctx.fillRect(altTapeX, horizonCenterY - 18, tapeWidth, 36);
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(altTapeX, horizonCenterY - 18, tapeWidth, 36);
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.font = 'bold 18px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(Math.round(altitude), altTapeX + tapeWidth / 2, horizonCenterY + 7);
+            
+            // Vertical speed indicator (right side)
+            const vsiX = width - 15;
+            const vsiY = horizonCenterY - 80;
+            const vsiHeight = 160;
+            
+            // VSI scale
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(vsiX, vsiY);
+            ctx.lineTo(vsiX, vsiY + vsiHeight);
+            ctx.stroke();
+            
+            // VSI marks
+            [6, 4, 2, 1, 0, -1, -2, -4, -6].forEach(n => {
+                const y = horizonCenterY - n * 13;
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(vsiX - 5, y);
+                ctx.lineTo(vsiX, y);
+                ctx.stroke();
+            });
+            
+            // VSI pointer
+            const vsIndicator = Math.max(-6, Math.min(6, vs / 500));
+            const vsY = horizonCenterY - vsIndicator * 13;
+            
+            ctx.fillStyle = '#00ff00';
+            ctx.beginPath();
+            ctx.moveTo(vsiX - 12, horizonCenterY);
+            ctx.lineTo(vsiX - 3, vsY);
+            ctx.lineTo(vsiX, vsY);
+            ctx.lineTo(vsiX, horizonCenterY);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Heading tape (bottom) - 15px gap from bottom
+            const hdgTapeY = height - 45;
+            const hdgTapeHeight = 30;
+            
+            ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
+            ctx.fillRect(horizonCenterX - 100, hdgTapeY, 200, hdgTapeHeight);
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(horizonCenterX - 100, hdgTapeY, 200, hdgTapeHeight);
+            
+            // Heading marks
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            
+            for (let h = Math.floor(heading / 10) * 10 - 30; h <= heading + 30; h += 10) {
+                const hdg = ((h % 360) + 360) % 360;
+                const x = horizonCenterX + (hdg - heading) * 3;
                 
+                if (hdg % 30 === 0) {
+                    const hdgText = hdg === 0 ? '36' : (hdg / 10).toString().padStart(2, '0');
+                    ctx.fillText(hdgText, x, hdgTapeY + 20);
+                }
+                
+                // Tick
                 ctx.strokeStyle = '#fff';
                 ctx.lineWidth = 1;
                 ctx.beginPath();
-                ctx.moveTo(altTapeX + tapeWidth - 10, y);
-                ctx.lineTo(altTapeX + tapeWidth, y);
+                ctx.moveTo(x, hdgTapeY);
+                ctx.lineTo(x, hdgTapeY + 8);
                 ctx.stroke();
             }
+            
+            // Heading bug (center triangle)
+            ctx.fillStyle = '#ffff00';
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(horizonCenterX, hdgTapeY);
+            ctx.lineTo(horizonCenterX - 8, hdgTapeY - 8);
+            ctx.lineTo(horizonCenterX + 8, hdgTapeY - 8);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Top status bar - clean autopilot mode indicators
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            ctx.fillRect(0, 0, width, 25);
+            
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            
+            // SPEED indicator (left)
+            if (apData.speed) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText('SPEED', 45, 17);
+            }
+            
+            // HDG indicator (center-left)
+            if (apData.heading) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText('HDG', 110, 17);
+            }
+            
+            // LOC indicator (center)
+            if (apData.nav) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText('LOC', width / 2, 17);
+            }
+            
+            // ALT indicator (center-right)
+            if (apData.altitude) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText('ALT', width - 110, 17);
+            }
+            
+            // AP1 and A/THR (far right, stacked)
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'right';
+            
+            if (apMaster) {
+                ctx.fillText('AP1', width - 10, 10);
+            }
+            if (autoThrottle) {
+                ctx.fillText('A/THR', width - 10, 22);
+            }
         }
-    }
-    
-    // Altitude readout box
-    ctx.fillStyle = '#000';
-    ctx.fillRect(altTapeX, horizonCenterY - 18, tapeWidth, 36);
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(altTapeX, horizonCenterY - 18, tapeWidth, 36);
-    
-    ctx.fillStyle = '#00ff00';
-    ctx.font = 'bold 18px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText(Math.round(altitude), altTapeX + tapeWidth / 2, horizonCenterY + 7);
-    
-    // Vertical speed indicator (right side)
-    const vsiX = width - 15;
-    const vsiY = horizonCenterY - 80;
-    const vsiHeight = 160;
-    
-    // VSI scale
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(vsiX, vsiY);
-    ctx.lineTo(vsiX, vsiY + vsiHeight);
-    ctx.stroke();
-    
-    // VSI marks
-    [6, 4, 2, 1, 0, -1, -2, -4, -6].forEach(n => {
-        const y = horizonCenterY - n * 13;
-        ctx.strokeStyle = '#888';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(vsiX - 5, y);
-        ctx.lineTo(vsiX, y);
-        ctx.stroke();
-    });
-    
-    // VSI pointer
-    const vsIndicator = Math.max(-6, Math.min(6, vs / 500));
-    const vsY = horizonCenterY - vsIndicator * 13;
-    
-    ctx.fillStyle = '#00ff00';
-    ctx.beginPath();
-    ctx.moveTo(vsiX - 12, horizonCenterY);
-    ctx.lineTo(vsiX - 3, vsY);
-    ctx.lineTo(vsiX, vsY);
-    ctx.lineTo(vsiX, horizonCenterY);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Heading tape (bottom) - 15px gap from bottom
-    const hdgTapeY = height - 45;
-    const hdgTapeHeight = 30;
-    
-    ctx.fillStyle = 'rgba(50, 50, 50, 0.8)';
-    ctx.fillRect(horizonCenterX - 100, hdgTapeY, 200, hdgTapeHeight);
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(horizonCenterX - 100, hdgTapeY, 200, hdgTapeHeight);
-    
-    // Heading marks
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 14px Arial';
-    ctx.textAlign = 'center';
-    
-    for (let h = Math.floor(heading / 10) * 10 - 30; h <= heading + 30; h += 10) {
-        const hdg = ((h % 360) + 360) % 360;
-        const x = horizonCenterX + (hdg - heading) * 3;
-        
-        if (hdg % 30 === 0) {
-            const hdgText = hdg === 0 ? '36' : (hdg / 10).toString().padStart(2, '0');
-            ctx.fillText(hdgText, x, hdgTapeY + 20);
-        }
-        
-        // Tick
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(x, hdgTapeY);
-        ctx.lineTo(x, hdgTapeY + 8);
-        ctx.stroke();
-    }
-    
-    // Heading bug (center triangle)
-    ctx.fillStyle = '#ffff00';
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(horizonCenterX, hdgTapeY);
-    ctx.lineTo(horizonCenterX - 8, hdgTapeY - 8);
-    ctx.lineTo(horizonCenterX + 8, hdgTapeY - 8);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-    
-// Top status bar - clean autopilot mode indicators
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
-    ctx.fillRect(0, 0, width, 25);
-    
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    
-    // SPEED indicator (left)
-    if (apData.speed) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText('SPEED', 45, 17);
-    }
-    
-    // HDG indicator (center-left)
-    if (apData.heading) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText('HDG', 110, 17);
-    }
-    
-    // LOC indicator (center)
-    if (apData.nav) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText('LOC', width / 2, 17);
-    }
-    
-    // ALT indicator (center-right)
-    if (apData.altitude) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText('ALT', width - 110, 17);
-    }
-    
-    // AP1 and A/THR (far right, stacked)
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'right';
-    
-    if (apMaster) {
-        ctx.fillText('AP1', width - 10, 10);
-    }
-    if (autoThrottle) {
-        ctx.fillText('A/THR', width - 10, 22);
-    }
-}
-        
+            
         function drawMFD() {
             const ctx = mfdCtx;
             const width = mfdCanvas.width;
@@ -2580,511 +3255,511 @@ function drawPFD() {
             ctx.fillText('HDG ' + Math.round(heading) + '°', centerX, height - 15);
         }
 
-function drawEICAS() {
-    const ctx = eicasCtx;
-    const width = eicasCanvas.width;
-    const height = eicasCanvas.height;
-    
-    // Clear canvas
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, width, height);
-    
-    const apData = window.lastAutopilotState || {};
-    
-    // Auto-detect number of engines
-    const hasEngine3 = apData.engine3N1 !== undefined && apData.engine3N1 > 0;
-    const hasEngine4 = apData.engine4N1 !== undefined && apData.engine4N1 > 0;
-    numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
-    
-    if (eicasPage === 0) {
-        drawEnginePage(ctx, width, height, apData);
-    } else if (eicasPage === 1) {
-        drawSystemsPage(ctx, width, height, apData);
-    } else {
-        drawFlightControlsPage(ctx, width, height, apData);
-    }
-}
+        function drawEICAS() {
+            const ctx = eicasCtx;
+            const width = eicasCanvas.width;
+            const height = eicasCanvas.height;
+            
+            // Clear canvas
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+            
+            const apData = window.lastAutopilotState || {};
+            
+            // Auto-detect number of engines
+            const hasEngine3 = apData.engine3N1 !== undefined && apData.engine3N1 > 0;
+            const hasEngine4 = apData.engine4N1 !== undefined && apData.engine4N1 > 0;
+            numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
+            
+            if (eicasPage === 0) {
+                drawEnginePage(ctx, width, height, apData);
+            } else if (eicasPage === 1) {
+                drawSystemsPage(ctx, width, height, apData);
+            } else {
+                drawFlightControlsPage(ctx, width, height, apData);
+            }
+        }
 
-function drawEnginePage(ctx, width, height, apData) {
-    const n1_1 = apData.engine1N1 || 0;
-    const n1_2 = apData.engine2N1 || 0;
-    const n1_3 = apData.engine3N1 || 0;
-    const n1_4 = apData.engine4N1 || 0;
-    const n2_1 = apData.engine1N2 || 0;
-    const n2_2 = apData.engine2N2 || 0;
-    const n2_3 = apData.engine3N2 || 0;
-    const n2_4 = apData.engine4N2 || 0;
-    const egt_1 = apData.engine1EGT || 0;
-    const egt_2 = apData.engine2EGT || 0;
-    const egt_3 = apData.engine3EGT || 0;
-    const egt_4 = apData.engine4EGT || 0;
-    const ff_1 = apData.engine1FuelFlow || 0;
-    const ff_2 = apData.engine2FuelFlow || 0;
-    const ff_3 = apData.engine3FuelFlow || 0;
-    const ff_4 = apData.engine4FuelFlow || 0;
-    const fuelTotal = apData.fuelTotalQuantity || 0;
-    
-    // Draw title
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('ENGINE', width / 2, 15);
-    
-    // Calculate layout based on engine count
-    const spacing = width / (numEngines + 1);
-    const engineX = [];
-    for (let i = 0; i < numEngines; i++) {
-        engineX.push(spacing * (i + 1));
-    }
-    
-    const startY = 25;
-    const rowHeight = 20;
-    
-    // Engine labels
-    ctx.font = 'bold 10px Arial';
-    ctx.fillStyle = '#888';
-    for (let i = 0; i < numEngines; i++) {
-        ctx.fillText((i + 1).toString(), engineX[i], startY);
-    }
-    
-    // N1 Label
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.font = '9px Arial';
-    ctx.fillText('N1%', 5, startY + rowHeight + 10);
-    
-    // N1 Values
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 11px Arial';
-    const n1Values = [n1_1, n1_2, n1_3, n1_4];
-    for (let i = 0; i < numEngines; i++) {
-        ctx.fillStyle = n1Values[i] > 95 ? '#ff0000' : '#00ff00';
-        ctx.fillText(n1Values[i].toFixed(1), engineX[i], startY + rowHeight + 5);
-    }
-    
-    // N1 Arc Gauges - smaller
-    const arcY = startY + rowHeight + 30;
-    const arcRadius = numEngines === 4 ? 18 : 22;
-    for (let i = 0; i < numEngines; i++) {
-        drawArcGauge(ctx, engineX[i], arcY, arcRadius, n1Values[i], 100, n1Values[i] > 95 ? '#ff0000' : '#00ff00');
-    }
-    
-    // N2 Label
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.font = '9px Arial';
-    ctx.fillText('N2%', 5, arcY + arcRadius + 22);
-    
-    // N2 Values
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 10px Arial';
-    const n2Values = [n2_1, n2_2, n2_3, n2_4];
-    for (let i = 0; i < numEngines; i++) {
-        ctx.fillStyle = '#fff';
-        ctx.fillText(n2Values[i].toFixed(1), engineX[i], arcY + arcRadius + 22);
-    }
-    
-    // EGT Label
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.font = '9px Arial';
-    ctx.fillText('EGT°C', 5, arcY + arcRadius + 38);
-    
-    // EGT Values
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 10px Arial';
-    const egtValues = [egt_1, egt_2, egt_3, egt_4];
-    for (let i = 0; i < numEngines; i++) {
-        ctx.fillStyle = egtValues[i] > 800 ? '#ff8800' : '#fff';
-        ctx.fillText(Math.round(egtValues[i]), engineX[i], arcY + arcRadius + 38);
-    }
-    
-    // Fuel Flow Label
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.font = '9px Arial';
-    ctx.fillText('FF kg/h', 5, arcY + arcRadius + 54);
-    
-    // Fuel Flow Values
-    ctx.textAlign = 'center';
-    ctx.font = 'bold 10px Arial';
-    const ffValues = [ff_1, ff_2, ff_3, ff_4];
-    for (let i = 0; i < numEngines; i++) {
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText(Math.round(ffValues[i]), engineX[i], arcY + arcRadius + 54);
-    }
-    
-    // Fuel quantity bar at bottom
-    const barY = height - 30;
-    ctx.fillStyle = '#888';
-    ctx.font = '9px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('FUEL', 10, barY - 5);
-    
-    const fuelMaxGallons = 10000;
-    const fuelPercent = Math.min(100, (fuelTotal / fuelMaxGallons) * 100);
-    const fuelKg = Math.round(fuelTotal * 0.8);
-    
-    const barWidth = width - 60;
-    const barX = 10;
-    
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(barX, barY, barWidth, 10);
-    
-    ctx.fillStyle = fuelPercent < 20 ? '#ff8800' : '#00ff00';
-    ctx.fillRect(barX, barY, (barWidth * fuelPercent) / 100, 10);
-    
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(barX, barY, barWidth, 10);
-    
-    // Fuel quantity text
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 9px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(fuelKg + ' kg', width - 10, barY + 8);
-}
+        function drawEnginePage(ctx, width, height, apData) {
+            const n1_1 = apData.engine1N1 || 0;
+            const n1_2 = apData.engine2N1 || 0;
+            const n1_3 = apData.engine3N1 || 0;
+            const n1_4 = apData.engine4N1 || 0;
+            const n2_1 = apData.engine1N2 || 0;
+            const n2_2 = apData.engine2N2 || 0;
+            const n2_3 = apData.engine3N2 || 0;
+            const n2_4 = apData.engine4N2 || 0;
+            const egt_1 = apData.engine1EGT || 0;
+            const egt_2 = apData.engine2EGT || 0;
+            const egt_3 = apData.engine3EGT || 0;
+            const egt_4 = apData.engine4EGT || 0;
+            const ff_1 = apData.engine1FuelFlow || 0;
+            const ff_2 = apData.engine2FuelFlow || 0;
+            const ff_3 = apData.engine3FuelFlow || 0;
+            const ff_4 = apData.engine4FuelFlow || 0;
+            const fuelTotal = apData.fuelTotalQuantity || 0;
+            
+            // Draw title
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('ENGINE', width / 2, 15);
+            
+            // Calculate layout based on engine count
+            const spacing = width / (numEngines + 1);
+            const engineX = [];
+            for (let i = 0; i < numEngines; i++) {
+                engineX.push(spacing * (i + 1));
+            }
+            
+            const startY = 25;
+            const rowHeight = 20;
+            
+            // Engine labels
+            ctx.font = 'bold 10px Arial';
+            ctx.fillStyle = '#888';
+            for (let i = 0; i < numEngines; i++) {
+                ctx.fillText((i + 1).toString(), engineX[i], startY);
+            }
+            
+            // N1 Label
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Arial';
+            ctx.fillText('N1%', 5, startY + rowHeight + 10);
+            
+            // N1 Values
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 11px Arial';
+            const n1Values = [n1_1, n1_2, n1_3, n1_4];
+            for (let i = 0; i < numEngines; i++) {
+                ctx.fillStyle = n1Values[i] > 95 ? '#ff0000' : '#00ff00';
+                ctx.fillText(n1Values[i].toFixed(1), engineX[i], startY + rowHeight + 5);
+            }
+            
+            // N1 Arc Gauges - smaller
+            const arcY = startY + rowHeight + 30;
+            const arcRadius = numEngines === 4 ? 18 : 22;
+            for (let i = 0; i < numEngines; i++) {
+                drawArcGauge(ctx, engineX[i], arcY, arcRadius, n1Values[i], 100, n1Values[i] > 95 ? '#ff0000' : '#00ff00');
+            }
+            
+            // N2 Label
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Arial';
+            ctx.fillText('N2%', 5, arcY + arcRadius + 22);
+            
+            // N2 Values
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 10px Arial';
+            const n2Values = [n2_1, n2_2, n2_3, n2_4];
+            for (let i = 0; i < numEngines; i++) {
+                ctx.fillStyle = '#fff';
+                ctx.fillText(n2Values[i].toFixed(1), engineX[i], arcY + arcRadius + 22);
+            }
+            
+            // EGT Label
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Arial';
+            ctx.fillText('EGT°C', 5, arcY + arcRadius + 38);
+            
+            // EGT Values
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 10px Arial';
+            const egtValues = [egt_1, egt_2, egt_3, egt_4];
+            for (let i = 0; i < numEngines; i++) {
+                ctx.fillStyle = egtValues[i] > 800 ? '#ff8800' : '#fff';
+                ctx.fillText(Math.round(egtValues[i]), engineX[i], arcY + arcRadius + 38);
+            }
+            
+            // Fuel Flow Label
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Arial';
+            ctx.fillText('FF kg/h', 5, arcY + arcRadius + 54);
+            
+            // Fuel Flow Values
+            ctx.textAlign = 'center';
+            ctx.font = 'bold 10px Arial';
+            const ffValues = [ff_1, ff_2, ff_3, ff_4];
+            for (let i = 0; i < numEngines; i++) {
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText(Math.round(ffValues[i]), engineX[i], arcY + arcRadius + 54);
+            }
+            
+            // Fuel quantity bar at bottom
+            const barY = height - 30;
+            ctx.fillStyle = '#888';
+            ctx.font = '9px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('FUEL', 10, barY - 5);
+            
+            const fuelMaxGallons = 10000;
+            const fuelPercent = Math.min(100, (fuelTotal / fuelMaxGallons) * 100);
+            const fuelKg = Math.round(fuelTotal * 0.8);
+            
+            const barWidth = width - 60;
+            const barX = 10;
+            
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(barX, barY, barWidth, 10);
+            
+            ctx.fillStyle = fuelPercent < 20 ? '#ff8800' : '#00ff00';
+            ctx.fillRect(barX, barY, (barWidth * fuelPercent) / 100, 10);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, 10);
+            
+            // Fuel quantity text
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 9px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(fuelKg + ' kg', width - 10, barY + 8);
+        }
 
-function drawSystemsPage(ctx, width, height, apData) {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('SYSTEMS', width / 2, 15);
-    
-    const leftX = 75;
-    const rightX = 225;
-    let yPos = 35;
-    
-    // Hydraulics Section
-    ctx.fillStyle = '#167fac';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('HYDRAULICS', 10, yPos);
-    yPos += 12;
-    
-    const hydA = apData.hydraulicA !== undefined ? apData.hydraulicA : 3000;
-    const hydB = apData.hydraulicB !== undefined ? apData.hydraulicB : 3000;
-    
-    drawSystemBar(ctx, 10, yPos, 130, 'A', hydA, 3000, hydA > 2500 ? '#00ff00' : '#ff8800');
-    yPos += 18;
-    drawSystemBar(ctx, 10, yPos, 130, 'B', hydB, 3000, hydB > 2500 ? '#00ff00' : '#ff8800');
-    yPos += 40;
-    
-// APU Section
-    ctx.fillStyle = '#167fac';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('APU', 10, yPos);
-    yPos += 12;
-    
-    const apuRunning = apData.apuRunning !== undefined ? apData.apuRunning : false;
-    const apuN1 = apData.apuN1 !== undefined ? apData.apuN1 : 0;
-    const apuEgt = apData.apuEGT !== undefined ? apData.apuEGT : 0;
-    
-    ctx.font = '9px Arial';
-    ctx.fillStyle = '#888';
-    ctx.fillText('STATUS:', 10, yPos);
-    ctx.fillStyle = apuRunning ? '#00ff00' : '#888';
-    ctx.fillText(apuRunning ? 'RUN' : 'OFF', 55, yPos);
-    yPos += 12;
-    
-    if (apuRunning) {
-        ctx.fillStyle = '#888';
-        ctx.fillText('N1:', 10, yPos);
-        ctx.fillStyle = '#00ff00';
-        ctx.fillText(apuN1.toFixed(1) + '%', 55, yPos);
-        yPos += 12;
-        
-        ctx.fillStyle = '#888';
-        ctx.fillText('EGT:', 10, yPos);
-        ctx.fillStyle = apuEgt > 600 ? '#ff8800' : '#00ff00';
-        ctx.fillText(Math.round(apuEgt) + '°C', 55, yPos);
-    }
-    
-    // Fuel Distribution (right side)
-    yPos = 35;
-    ctx.fillStyle = '#167fac';
-    ctx.font = 'bold 10px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText('FUEL', rightX - 65, yPos);
-    yPos += 15;
-    
-    const fuelLeft = apData.fuelLeftQuantity || 0;
-    const fuelRight = apData.fuelRightQuantity || 0;
-    const fuelCenter = apData.fuelCenterQuantity || 0;
-    
-    ctx.font = '9px Arial';
-    ctx.fillStyle = '#888';
-    ctx.fillText('LEFT:', rightX - 65, yPos);
-    ctx.fillStyle = '#00ff00';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(fuelLeft) + ' gal', width - 10, yPos);
-    yPos += 15;
-    
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.fillText('RIGHT:', rightX - 65, yPos);
-    ctx.fillStyle = '#00ff00';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(fuelRight) + ' gal', width - 10, yPos);
-    yPos += 15;
-    
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.fillText('CENTER:', rightX - 65, yPos);
-    ctx.fillStyle = '#00ff00';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(fuelCenter) + ' gal', width - 10, yPos);
-    yPos += 25;
-    
-    // Electrical
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#167fac';
-    ctx.font = 'bold 10px Arial';
-    ctx.fillText('ELECTRICAL', rightX - 65, yPos);
-    yPos += 15;
-    
-    const batteryVoltage = apData.batteryVoltage !== undefined ? apData.batteryVoltage : 24;
-    const gen1 = apData.generator1 !== undefined ? apData.generator1 : true;
-    const gen2 = apData.generator2 !== undefined ? apData.generator2 : true;
-    
-    ctx.font = '9px Arial';
-    ctx.fillStyle = '#888';
-    ctx.fillText('BAT:', rightX - 65, yPos);
-    ctx.fillStyle = batteryVoltage > 20 ? '#00ff00' : '#ff8800';
-    ctx.textAlign = 'right';
-    ctx.fillText(batteryVoltage.toFixed(1) + 'V', width - 10, yPos);
-    yPos += 15;
-    
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.fillText('GEN 1:', rightX - 65, yPos);
-    ctx.fillStyle = gen1 ? '#00ff00' : '#ff0000';
-    ctx.textAlign = 'right';
-    ctx.fillText(gen1 ? 'ON' : 'OFF', width - 10, yPos);
-    yPos += 15;
-    
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    ctx.fillText('GEN 2:', rightX - 65, yPos);
-    ctx.fillStyle = gen2 ? '#00ff00' : '#ff0000';
-    ctx.textAlign = 'right';
-    ctx.fillText(gen2 ? 'ON' : 'OFF', width - 10, yPos);
-}
+        function drawSystemsPage(ctx, width, height, apData) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('SYSTEMS', width / 2, 15);
+            
+            const leftX = 75;
+            const rightX = 225;
+            let yPos = 35;
+            
+            // Hydraulics Section
+            ctx.fillStyle = '#167fac';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('HYDRAULICS', 10, yPos);
+            yPos += 12;
+            
+            const hydA = apData.hydraulicA !== undefined ? apData.hydraulicA : 3000;
+            const hydB = apData.hydraulicB !== undefined ? apData.hydraulicB : 3000;
+            
+            drawSystemBar(ctx, 10, yPos, 130, 'A', hydA, 3000, hydA > 2500 ? '#00ff00' : '#ff8800');
+            yPos += 18;
+            drawSystemBar(ctx, 10, yPos, 130, 'B', hydB, 3000, hydB > 2500 ? '#00ff00' : '#ff8800');
+            yPos += 40;
+            
+            // APU Section
+            ctx.fillStyle = '#167fac';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('APU', 10, yPos);
+            yPos += 12;
+            
+            const apuRunning = apData.apuRunning !== undefined ? apData.apuRunning : false;
+            const apuN1 = apData.apuN1 !== undefined ? apData.apuN1 : 0;
+            const apuEgt = apData.apuEGT !== undefined ? apData.apuEGT : 0;
+            
+            ctx.font = '9px Arial';
+            ctx.fillStyle = '#888';
+            ctx.fillText('STATUS:', 10, yPos);
+            ctx.fillStyle = apuRunning ? '#00ff00' : '#888';
+            ctx.fillText(apuRunning ? 'RUN' : 'OFF', 55, yPos);
+            yPos += 12;
+            
+            if (apuRunning) {
+                ctx.fillStyle = '#888';
+                ctx.fillText('N1:', 10, yPos);
+                ctx.fillStyle = '#00ff00';
+                ctx.fillText(apuN1.toFixed(1) + '%', 55, yPos);
+                yPos += 12;
+                
+                ctx.fillStyle = '#888';
+                ctx.fillText('EGT:', 10, yPos);
+                ctx.fillStyle = apuEgt > 600 ? '#ff8800' : '#00ff00';
+                ctx.fillText(Math.round(apuEgt) + '°C', 55, yPos);
+            }
+            
+            // Fuel Distribution (right side)
+            yPos = 35;
+            ctx.fillStyle = '#167fac';
+            ctx.font = 'bold 10px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText('FUEL', rightX - 65, yPos);
+            yPos += 15;
+            
+            const fuelLeft = apData.fuelLeftQuantity || 0;
+            const fuelRight = apData.fuelRightQuantity || 0;
+            const fuelCenter = apData.fuelCenterQuantity || 0;
+            
+            ctx.font = '9px Arial';
+            ctx.fillStyle = '#888';
+            ctx.fillText('LEFT:', rightX - 65, yPos);
+            ctx.fillStyle = '#00ff00';
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.round(fuelLeft) + ' gal', width - 10, yPos);
+            yPos += 15;
+            
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.fillText('RIGHT:', rightX - 65, yPos);
+            ctx.fillStyle = '#00ff00';
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.round(fuelRight) + ' gal', width - 10, yPos);
+            yPos += 15;
+            
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.fillText('CENTER:', rightX - 65, yPos);
+            ctx.fillStyle = '#00ff00';
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.round(fuelCenter) + ' gal', width - 10, yPos);
+            yPos += 25;
+            
+            // Electrical
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#167fac';
+            ctx.font = 'bold 10px Arial';
+            ctx.fillText('ELECTRICAL', rightX - 65, yPos);
+            yPos += 15;
+            
+            const batteryVoltage = apData.batteryVoltage !== undefined ? apData.batteryVoltage : 24;
+            const gen1 = apData.generator1 !== undefined ? apData.generator1 : true;
+            const gen2 = apData.generator2 !== undefined ? apData.generator2 : true;
+            
+            ctx.font = '9px Arial';
+            ctx.fillStyle = '#888';
+            ctx.fillText('BAT:', rightX - 65, yPos);
+            ctx.fillStyle = batteryVoltage > 20 ? '#00ff00' : '#ff8800';
+            ctx.textAlign = 'right';
+            ctx.fillText(batteryVoltage.toFixed(1) + 'V', width - 10, yPos);
+            yPos += 15;
+            
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.fillText('GEN 1:', rightX - 65, yPos);
+            ctx.fillStyle = gen1 ? '#00ff00' : '#ff0000';
+            ctx.textAlign = 'right';
+            ctx.fillText(gen1 ? 'ON' : 'OFF', width - 10, yPos);
+            yPos += 15;
+            
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            ctx.fillText('GEN 2:', rightX - 65, yPos);
+            ctx.fillStyle = gen2 ? '#00ff00' : '#ff0000';
+            ctx.textAlign = 'right';
+            ctx.fillText(gen2 ? 'ON' : 'OFF', width - 10, yPos);
+        }
 
-function drawFlightControlsPage(ctx, width, height, apData) {
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 12px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('FLIGHT CONTROLS', width / 2, 15);
-    
-    const centerX = width / 2;
-    const centerY = height / 2;
-    
-    // Get control surface positions
-    const aileron = apData.aileronPosition || 0;
-    const elevator = apData.elevatorPosition || 0;
-    const rudder = apData.rudderPosition || 0;
-    const flaps = apData.flaps || 0;
-    const spoilers = apData.spoilers || 0;
-    
-    // Draw simplified aircraft top view
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 2;
-    
-    // Fuselage
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY - 60);
-    ctx.lineTo(centerX, centerY + 50);
-    ctx.stroke();
-    
-    // Wings
-    ctx.beginPath();
-    ctx.moveTo(centerX - 80, centerY);
-    ctx.lineTo(centerX + 80, centerY);
-    ctx.stroke();
-    
-    // Tail
-    ctx.beginPath();
-    ctx.moveTo(centerX - 25, centerY + 50);
-    ctx.lineTo(centerX + 25, centerY + 50);
-    ctx.stroke();
-    
-    // Vertical stabilizer
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY + 50);
-    ctx.lineTo(centerX, centerY + 70);
-    ctx.stroke();
-    
-    // Ailerons (animated)
-    const aileronDeflection = aileron * 0.15;
-    
-    // Left aileron
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(centerX - 80, centerY);
-    ctx.lineTo(centerX - 50, centerY - aileronDeflection);
-    ctx.stroke();
-    
-    // Right aileron
-    ctx.beginPath();
-    ctx.moveTo(centerX + 80, centerY);
-    ctx.lineTo(centerX + 50, centerY + aileronDeflection);
-    ctx.stroke();
-    
-    // Elevator (animated)
-    const elevatorDeflection = elevator * 0.1;
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(centerX - 25, centerY + 50 + elevatorDeflection);
-    ctx.lineTo(centerX + 25, centerY + 50 + elevatorDeflection);
-    ctx.stroke();
-    
-    // Rudder (animated)
-    const rudderDeflection = rudder * 0.15;
-    ctx.strokeStyle = '#00ff00';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY + 50);
-    ctx.lineTo(centerX + rudderDeflection, centerY + 70);
-    ctx.stroke();
-    
-    // Flaps indicators
-    if (flaps > 0) {
-        ctx.strokeStyle = '#167fac';
-        ctx.lineWidth = 2;
-        // Left flap
-        ctx.beginPath();
-        ctx.moveTo(centerX - 45, centerY + 5);
-        ctx.lineTo(centerX - 35, centerY + 5 + (flaps * 0.1));
-        ctx.stroke();
-        // Right flap
-        ctx.beginPath();
-        ctx.moveTo(centerX + 45, centerY + 5);
-        ctx.lineTo(centerX + 35, centerY + 5 + (flaps * 0.1));
-        ctx.stroke();
-    }
-    
-    // Spoilers indicators
-    if (spoilers > 10) {
-        ctx.strokeStyle = '#ff8800';
-        ctx.lineWidth = 2;
-        // Left spoiler
-        ctx.beginPath();
-        ctx.moveTo(centerX - 60, centerY);
-        ctx.lineTo(centerX - 60, centerY - (spoilers * 0.15));
-        ctx.stroke();
-        // Right spoiler
-        ctx.beginPath();
-        ctx.moveTo(centerX + 60, centerY);
-        ctx.lineTo(centerX + 60, centerY - (spoilers * 0.15));
-        ctx.stroke();
-    }
-    
-// Control surface position readouts - moved higher to avoid overlap
-    ctx.font = '8px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#888';
-    
-    let infoY = height - 45;
-    ctx.fillText('AILER:', 10, infoY);
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(aileron.toFixed(1), 45, infoY);
-    
-    ctx.fillStyle = '#888';
-    ctx.fillText('ELEV:', 85, infoY);
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(elevator.toFixed(1), 115, infoY);
-    
-    ctx.fillStyle = '#888';
-    ctx.fillText('RUD:', 155, infoY);
-    ctx.fillStyle = '#00ff00';
-    ctx.fillText(rudder.toFixed(1), 180, infoY);
-    
-    infoY += 12;
-    ctx.fillStyle = '#888';
-    ctx.fillText('FLAPS:', 10, infoY);
-    ctx.fillStyle = '#167fac';
-    ctx.fillText(flaps.toFixed(0) + '%', 45, infoY);
-    
-    ctx.fillStyle = '#888';
-    ctx.fillText('SPLRS:', 85, infoY);
-    ctx.fillStyle = spoilers > 10 ? '#ff8800' : '#888';
-    ctx.fillText(spoilers.toFixed(0) + '%', 120, infoY);
-}
+        function drawFlightControlsPage(ctx, width, height, apData) {
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('FLIGHT CONTROLS', width / 2, 15);
+            
+            const centerX = width / 2;
+            const centerY = height / 2;
+            
+            // Get control surface positions
+            const aileron = apData.aileronPosition || 0;
+            const elevator = apData.elevatorPosition || 0;
+            const rudder = apData.rudderPosition || 0;
+            const flaps = apData.flaps || 0;
+            const spoilers = apData.spoilers || 0;
+            
+            // Draw simplified aircraft top view
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 2;
+            
+            // Fuselage
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY - 60);
+            ctx.lineTo(centerX, centerY + 50);
+            ctx.stroke();
+            
+            // Wings
+            ctx.beginPath();
+            ctx.moveTo(centerX - 80, centerY);
+            ctx.lineTo(centerX + 80, centerY);
+            ctx.stroke();
+            
+            // Tail
+            ctx.beginPath();
+            ctx.moveTo(centerX - 25, centerY + 50);
+            ctx.lineTo(centerX + 25, centerY + 50);
+            ctx.stroke();
+            
+            // Vertical stabilizer
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY + 50);
+            ctx.lineTo(centerX, centerY + 70);
+            ctx.stroke();
+            
+            // Ailerons (animated)
+            const aileronDeflection = aileron * 0.15;
+            
+            // Left aileron
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 80, centerY);
+            ctx.lineTo(centerX - 50, centerY - aileronDeflection);
+            ctx.stroke();
+            
+            // Right aileron
+            ctx.beginPath();
+            ctx.moveTo(centerX + 80, centerY);
+            ctx.lineTo(centerX + 50, centerY + aileronDeflection);
+            ctx.stroke();
+            
+            // Elevator (animated)
+            const elevatorDeflection = elevator * 0.1;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(centerX - 25, centerY + 50 + elevatorDeflection);
+            ctx.lineTo(centerX + 25, centerY + 50 + elevatorDeflection);
+            ctx.stroke();
+            
+            // Rudder (animated)
+            const rudderDeflection = rudder * 0.15;
+            ctx.strokeStyle = '#00ff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY + 50);
+            ctx.lineTo(centerX + rudderDeflection, centerY + 70);
+            ctx.stroke();
+            
+            // Flaps indicators
+            if (flaps > 0) {
+                ctx.strokeStyle = '#167fac';
+                ctx.lineWidth = 2;
+                // Left flap
+                ctx.beginPath();
+                ctx.moveTo(centerX - 45, centerY + 5);
+                ctx.lineTo(centerX - 35, centerY + 5 + (flaps * 0.1));
+                ctx.stroke();
+                // Right flap
+                ctx.beginPath();
+                ctx.moveTo(centerX + 45, centerY + 5);
+                ctx.lineTo(centerX + 35, centerY + 5 + (flaps * 0.1));
+                ctx.stroke();
+            }
+            
+            // Spoilers indicators
+            if (spoilers > 10) {
+                ctx.strokeStyle = '#ff8800';
+                ctx.lineWidth = 2;
+                // Left spoiler
+                ctx.beginPath();
+                ctx.moveTo(centerX - 60, centerY);
+                ctx.lineTo(centerX - 60, centerY - (spoilers * 0.15));
+                ctx.stroke();
+                // Right spoiler
+                ctx.beginPath();
+                ctx.moveTo(centerX + 60, centerY);
+                ctx.lineTo(centerX + 60, centerY - (spoilers * 0.15));
+                ctx.stroke();
+            }
+            
+            // Control surface position readouts - moved higher to avoid overlap
+            ctx.font = '8px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#888';
+            
+            let infoY = height - 45;
+            ctx.fillText('AILER:', 10, infoY);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(aileron.toFixed(1), 45, infoY);
+            
+            ctx.fillStyle = '#888';
+            ctx.fillText('ELEV:', 85, infoY);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(elevator.toFixed(1), 115, infoY);
+            
+            ctx.fillStyle = '#888';
+            ctx.fillText('RUD:', 155, infoY);
+            ctx.fillStyle = '#00ff00';
+            ctx.fillText(rudder.toFixed(1), 180, infoY);
+            
+            infoY += 12;
+            ctx.fillStyle = '#888';
+            ctx.fillText('FLAPS:', 10, infoY);
+            ctx.fillStyle = '#167fac';
+            ctx.fillText(flaps.toFixed(0) + '%', 45, infoY);
+            
+            ctx.fillStyle = '#888';
+            ctx.fillText('SPLRS:', 85, infoY);
+            ctx.fillStyle = spoilers > 10 ? '#ff8800' : '#888';
+            ctx.fillText(spoilers.toFixed(0) + '%', 120, infoY);
+        }
 
-function drawSystemBar(ctx, x, y, width, label, value, max, color) {
-    ctx.font = '9px Arial';
-    ctx.fillStyle = '#888';
-    ctx.textAlign = 'left';
-    ctx.fillText(label + ':', x, y);
-    
-    const barX = x + 15;
-    const barWidth = width - 45;
-    const barHeight = 8;
-    
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(barX, y - 7, barWidth, barHeight);
-    
-    const percent = Math.min(100, (value / max) * 100);
-    ctx.fillStyle = color;
-    ctx.fillRect(barX, y - 7, (barWidth * percent) / 100, barHeight);
-    
-    ctx.strokeStyle = '#333';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(barX, y - 7, barWidth, barHeight);
-    
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 8px Arial';
-    ctx.textAlign = 'right';
-    ctx.fillText(Math.round(value), x + width, y);
-}
+        function drawSystemBar(ctx, x, y, width, label, value, max, color) {
+            ctx.font = '9px Arial';
+            ctx.fillStyle = '#888';
+            ctx.textAlign = 'left';
+            ctx.fillText(label + ':', x, y);
+            
+            const barX = x + 15;
+            const barWidth = width - 45;
+            const barHeight = 8;
+            
+            ctx.fillStyle = '#1a1a1a';
+            ctx.fillRect(barX, y - 7, barWidth, barHeight);
+            
+            const percent = Math.min(100, (value / max) * 100);
+            ctx.fillStyle = color;
+            ctx.fillRect(barX, y - 7, (barWidth * percent) / 100, barHeight);
+            
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, y - 7, barWidth, barHeight);
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = 'bold 8px Arial';
+            ctx.textAlign = 'right';
+            ctx.fillText(Math.round(value), x + width, y);
+        }
 
-function drawArcGauge(ctx, x, y, radius, value, max, color) {
-    // Background arc
-    ctx.strokeStyle = '#1a1a1a';
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, Math.PI * 0.75, Math.PI * 2.25);
-    ctx.stroke();
-    
-    // Value arc
-    const angle = (value / max) * (Math.PI * 1.5);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 6;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, Math.PI * 0.75, Math.PI * 0.75 + angle);
-    ctx.stroke();
-    
-    // Redline at 95%
-    if (max === 100) {
-        ctx.strokeStyle = '#ff0000';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        const redlineAngle = Math.PI * 0.75 + (0.95 * Math.PI * 1.5);
-        const rx1 = x + Math.cos(redlineAngle) * (radius - 8);
-        const ry1 = y + Math.sin(redlineAngle) * (radius - 8);
-        const rx2 = x + Math.cos(redlineAngle) * (radius + 8);
-        const ry2 = y + Math.sin(redlineAngle) * (radius + 8);
-        ctx.moveTo(rx1, ry1);
-        ctx.lineTo(rx2, ry2);
-        ctx.stroke();
-    }
-}
+        function drawArcGauge(ctx, x, y, radius, value, max, color) {
+            // Background arc
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, Math.PI * 0.75, Math.PI * 2.25);
+            ctx.stroke();
+            
+            // Value arc
+            const angle = (value / max) * (Math.PI * 1.5);
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, Math.PI * 0.75, Math.PI * 0.75 + angle);
+            ctx.stroke();
+            
+            // Redline at 95%
+            if (max === 100) {
+                ctx.strokeStyle = '#ff0000';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                const redlineAngle = Math.PI * 0.75 + (0.95 * Math.PI * 1.5);
+                const rx1 = x + Math.cos(redlineAngle) * (radius - 8);
+                const ry1 = y + Math.sin(redlineAngle) * (radius - 8);
+                const rx2 = x + Math.cos(redlineAngle) * (radius + 8);
+                const ry2 = y + Math.sin(redlineAngle) * (radius + 8);
+                ctx.moveTo(rx1, ry1);
+                ctx.lineTo(rx2, ry2);
+                ctx.stroke();
+            }
+        }
 
-window.onload = () => {
-    const savedId = localStorage.getItem('p3d_unique_id');
-    if (savedId) {
-        document.getElementById('uniqueId').value = savedId;
-    }
-    
-    const savedPassword = localStorage.getItem('p3d_control_password');
-    if (savedPassword) {
-        document.getElementById('controlPassword').value = savedPassword;
-    }
-};
+        window.onload = () => {
+            const savedId = localStorage.getItem('p3d_unique_id');
+            if (savedId) {
+                document.getElementById('uniqueId').value = savedId;
+            }
+            
+            const savedPassword = localStorage.getItem('p3d_control_password');
+            if (savedPassword) {
+                document.getElementById('controlPassword').value = savedPassword;
+            }
+        };
     </script>
 </body>
 </html>`;
@@ -3093,37 +3768,3 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
