@@ -11,6 +11,8 @@ const PORT = process.env.PORT || 3000;
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword }
 const sessions = new Map();
+// Track multiplayer positions
+const onlinePilots = new Map(); // uniqueId -> pilot data
 
 app.use(express.static('public'));
 
@@ -37,55 +39,59 @@ if (data.type === 'register_pc') {
   const uniqueId = data.uniqueId;
   const password = data.password;
   const guestPassword = data.guestPassword;
-  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false; // default to true for backwards compatibility
+  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false;
   
   ws.uniqueId = uniqueId;
   ws.clientType = 'pc';
 
-        if (!onlinePilots.has(uniqueId)) {
-          onlinePilots.set(uniqueId, {
-            uniqueId: uniqueId,
-            callsign: '',
-            latitude: 0,
-            longitude: 0,
-            altitude: 0,
-            heading: 0,
-            groundSpeed: 0,
-            aircraft: '',
-            lastUpdate: Date.now()
-          });
-        }
-      }
-      
-      else if (data.type === 'mp_position') {
-        // Update pilot position
-        const pilotData = {
-          uniqueId: data.uniqueId,
-          callsign: data.callsign || data.uniqueId,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          altitude: data.altitude,
-          heading: data.heading,
-          groundSpeed: data.groundSpeed,
-          aircraft: data.aircraft || 'Unknown',
-          lastUpdate: Date.now()
-        };
-        onlinePilots.set(data.uniqueId, pilotData);
-      }
-      
-      else if (data.type === 'request_multiplayer') {
-        // Send list of all online pilots to requesting mobile client
-        const pilots = Array.from(onlinePilots.values())
-          .filter(p => Date.now() - p.lastUpdate < 30000) // Only pilots updated in last 30 seconds
-          .filter(p => p.uniqueId !== ws.uniqueId); // Don't send user's own data
-        
-        if (ws.clientType === 'mobile') {
-          ws.send(JSON.stringify({
-            type: 'multiplayer_data',
-            data: pilots
-          }));
-        }
-      }
+  // Initialize pilot position tracking
+  if (!onlinePilots.has(uniqueId)) {
+    onlinePilots.set(uniqueId, {
+      uniqueId: uniqueId,
+      callsign: '',
+      latitude: 0,
+      longitude: 0,
+      altitude: 0,
+      heading: 0,
+      groundSpeed: 0,
+      aircraft: '',
+      lastUpdate: Date.now()
+    });
+  }
+  
+  ws.send(JSON.stringify({ type: 'registered', uniqueId }));
+  console.log(`PC registered: ${uniqueId}`);
+}
+
+else if (data.type === 'mp_position') {
+  // Update pilot position
+  const pilotData = {
+    uniqueId: data.uniqueId,
+    callsign: data.callsign || data.uniqueId,
+    latitude: data.latitude,
+    longitude: data.longitude,
+    altitude: data.altitude,
+    heading: data.heading,
+    groundSpeed: data.groundSpeed,
+    aircraft: data.aircraft || 'Unknown',
+    lastUpdate: Date.now()
+  };
+  onlinePilots.set(data.uniqueId, pilotData);
+}
+
+else if (data.type === 'request_multiplayer') {
+  // Send list of all online pilots to requesting mobile client
+  const pilots = Array.from(onlinePilots.values())
+    .filter(p => Date.now() - p.lastUpdate < 30000)
+    .filter(p => p.uniqueId !== ws.uniqueId);
+  
+  if (ws.clientType === 'mobile') {
+    ws.send(JSON.stringify({
+      type: 'multiplayer_data',
+      data: pilots
+    }));
+  }
+}
   
   if (!sessions.has(uniqueId)) {
     sessions.set(uniqueId, {
@@ -95,7 +101,7 @@ if (data.type === 'register_pc') {
       guestPassword: guestPassword,
       isGuestPasswordEnabled: isGuestPasswordEnabled
     });
-} else {
+  } else {
     const session = sessions.get(uniqueId);
     session.pcClient = ws;
     session.password = password;
@@ -3763,6 +3769,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
