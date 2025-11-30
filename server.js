@@ -926,7 +926,8 @@ function getMobileAppHTML() {
                 Enter your Unique ID from PC Server
             </div>
             <input type='text' id='uniqueId' placeholder='Unique ID' autocapitalize='off'>
-            <button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
+<button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
+<button class='btn btn-secondary' onclick='testConnection()' style='margin-top: 10px;'>Test Connection</button>
         </div>
     </div>
 
@@ -1440,35 +1441,98 @@ function getMobileAppHTML() {
             }
         }
 
-        function connectToSim() {
-            uniqueId = document.getElementById('uniqueId').value.trim();
-            if (!uniqueId) {
-                alert('Please enter your Unique ID');
-                return;
-            }
-            
-            localStorage.setItem('p3d_unique_id', uniqueId);
-            
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(protocol + '//' + window.location.host);
-            
-            ws.onopen = () => {
-                ws.send(JSON.stringify({ 
-                    type: 'connect_mobile',
-                    uniqueId: uniqueId
-                }));
+function connectToSim() {
+    uniqueId = document.getElementById('uniqueId').value.trim();
+    if (!uniqueId) {
+        alert('Please enter your Unique ID');
+        return;
+    }
+    
+    console.log('Attempting to connect with ID:', uniqueId);
+    localStorage.setItem('p3d_unique_id', uniqueId);
+    
+    // Determine WebSocket URL
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + window.location.host;
+    console.log('WebSocket URL:', wsUrl);
+    
+    // Close existing connection if any
+    if (ws && ws.readyState !== WebSocket.CLOSED) {
+        console.log('Closing existing connection');
+        ws.close();
+    }
+    
+    try {
+        ws = new WebSocket(wsUrl);
+        console.log('WebSocket created, state:', ws.readyState);
+        
+        ws.onopen = () => {
+            console.log('WebSocket opened!');
+            const message = { 
+                type: 'connect_mobile',
+                uniqueId: uniqueId
             };
+            console.log('Sending message:', message);
+            ws.send(JSON.stringify(message));
+        };
 
-            ws.onmessage = (event) => {
+        ws.onmessage = (event) => {
+            console.log('Received message:', event.data);
+            try {
                 const data = JSON.parse(event.data);
+                console.log('Parsed data:', data);
                 handleMessage(data);
-            };
+            } catch (err) {
+                console.error('Failed to parse message:', err);
+            }
+        };
 
-            ws.onclose = () => {
-                updateStatus('offline');
-                setTimeout(connectToSim, 3000);
-            };
-        }
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            alert('Connection error! Check console for details.');
+        };
+
+        ws.onclose = (event) => {
+            console.log('WebSocket closed. Code:', event.code, 'Reason:', event.reason);
+            updateStatus('offline');
+            
+            // Only reconnect if it was an abnormal closure
+            if (event.code !== 1000) {
+                console.log('Attempting to reconnect in 3 seconds...');
+                setTimeout(() => {
+                    console.log('Reconnecting...');
+                    connectToSim();
+                }, 3000);
+            }
+        };
+    } catch (err) {
+        console.error('Failed to create WebSocket:', err);
+        alert('Failed to create connection: ' + err.message);
+    }
+}
+
+function testConnection() {
+    console.log('=== CONNECTION TEST ===');
+    console.log('Current URL:', window.location.href);
+    console.log('Protocol:', window.location.protocol);
+    console.log('Host:', window.location.host);
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = protocol + '//' + window.location.host;
+    console.log('WebSocket URL would be:', wsUrl);
+    
+    // Test fetch to health endpoint
+    fetch('/health')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Health check response:', data);
+            alert('Server is reachable! Active sessions: ' + data.activeSessions);
+        })
+        .catch(err => {
+            console.error('Health check failed:', err);
+            alert('Server not reachable: ' + err.message);
+        });
+}
 
         function handleMessage(data) {
             switch(data.type) {
@@ -1477,6 +1541,13 @@ function getMobileAppHTML() {
                     document.getElementById('mainApp').classList.remove('hidden');
                     updateStatus(data.pcOnline ? 'connected' : 'offline');
                     break;
+
+                            case 'connected':
+            console.log('Successfully connected! PC online:', data.pcOnline);
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+            updateStatus(data.pcOnline ? 'connected' : 'offline');
+            break;
 
                 case 'save_complete':
                     closeSaveProgress(true, data.filename);
@@ -3768,3 +3839,4 @@ function getMobileAppHTML() {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
