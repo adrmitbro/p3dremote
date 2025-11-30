@@ -1047,63 +1047,6 @@ function getMobileAppHTML() {
         <div class='info-box'>🔒 Enter password to access controls</div>
         <input type='password' id='controlPassword' placeholder='Password'>
         <button class='btn btn-primary' onclick='unlockControls()'>Unlock Controls</button>
-        <!-- Stats Tab -->
-<div class='tab-content'>
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Current Flight</h3>
-        <div id='flightStatsInfo' class='stats-container'>
-            <div class='stats-row'>
-                <div class='stat-item'>
-                    <span class='stat-label'>Flight Time</span>
-                    <span class='stat-value'>0.0 min</span>
-                </div>
-                <div class='stat-item'>
-                    <span class='stat-label'>Max Alt</span>
-                    <span class='stat-value'>0 ft</span>
-                </div>
-            </div>
-            <div class='stats-row'>
-                <div class='stat-item'>
-                    <span class='stat-label'>Max Speed</span>
-                    <span class='stat-value'>0 kts</span>
-                </div>
-                <div class='stat-item'>
-                    <span class='stat-label'>Total Flights</span>
-                    <span class='stat-value'>0</span>
-                </div>
-            </div>
-            <div class='stats-bottom'>
-                <span>Total Hours: 0.0h</span>
-            </div>
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Flight History</h3>
-        <button class='btn btn-primary' onclick='showFlightHistory()'>View All Flights</button>
-        <div style='margin-top: 10px; color: #888; font-size: 12px; text-align: center;'>
-            Track your flights and landing performance
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Camera Controls</h3>
-        <div class='camera-controls'>
-            <button class='camera-btn' onclick='changeView("cockpit")'>🪟<br>Cockpit</button>
-            <button class='camera-btn' onclick='changeView("external")'>✈️<br>External</button>
-            <button class='camera-btn' onclick='changeView("tower")'>🗼<br>Tower</button>
-            <button class='camera-btn' onclick='changeView("prev")'>◀<br>Previous</button>
-            <button class='camera-btn' onclick='changeView("next")'>▶<br>Next</button>
-        </div>
-    </div>
-    
-    <div class='card'>
-        <h3 style='margin-bottom: 10px;'>Landing Performance</h3>
-        <div style='color: #888; font-size: 13px; text-align: center; padding: 20px;'>
-            Your last landing stats will appear here after touchdown
-        </div>
-    </div>
-</div>
     </div>
     
     <div id='controlPanel' class='hidden'>
@@ -1324,6 +1267,63 @@ function getMobileAppHTML() {
             </div>
         </div>
     </div>
+    <!-- Stats Tab -->
+<div class='tab-content'>
+    <div class='card'>
+        <h3 style='margin-bottom: 10px;'>Current Flight</h3>
+        <div id='flightStatsInfo' class='stats-container'>
+            <div class='stats-row'>
+                <div class='stat-item'>
+                    <span class='stat-label'>Flight Time</span>
+                    <span class='stat-value'>0.0 min</span>
+                </div>
+                <div class='stat-item'>
+                    <span class='stat-label'>Max Alt</span>
+                    <span class='stat-value'>0 ft</span>
+                </div>
+            </div>
+            <div class='stats-row'>
+                <div class='stat-item'>
+                    <span class='stat-label'>Max Speed</span>
+                    <span class='stat-value'>0 kts</span>
+                </div>
+                <div class='stat-item'>
+                    <span class='stat-label'>Total Flights</span>
+                    <span class='stat-value'>0</span>
+                </div>
+            </div>
+            <div class='stats-bottom'>
+                <span>Total Hours: 0.0h</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class='card'>
+        <h3 style='margin-bottom: 10px;'>Flight History</h3>
+        <button class='btn btn-primary' onclick='showFlightHistory()'>View All Flights</button>
+        <div style='margin-top: 10px; color: #888; font-size: 12px; text-align: center;'>
+            Track your flights and landing performance
+        </div>
+    </div>
+    
+    <div class='card'>
+        <h3 style='margin-bottom: 10px;'>Camera Controls</h3>
+        <div class='camera-controls'>
+            <button class='camera-btn' onclick='changeView("cockpit")'>🪟<br>Cockpit</button>
+            <button class='camera-btn' onclick='changeView("external")'>✈️<br>External</button>
+            <button class='camera-btn' onclick='changeView("tower")'>🗼<br>Tower</button>
+            <button class='camera-btn' onclick='changeView("prev")'>◀<br>Previous</button>
+            <button class='camera-btn' onclick='changeView("next")'>▶<br>Next</button>
+        </div>
+    </div>
+    
+    <div class='card'>
+        <h3 style='margin-bottom: 10px;'>Landing Performance</h3>
+        <div style='color: #888; font-size: 13px; text-align: center; padding: 20px;'>
+            Your last landing stats will appear here after touchdown
+        </div>
+    </div>
+</div>
 </div>
     </div>
 
@@ -3730,6 +3730,7 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
