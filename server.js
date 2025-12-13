@@ -1676,7 +1676,7 @@ function updateAutopilotStatus(data) {
             const size = isSelected ? 26 : 24;
             
             return L.divIcon({
-                html: \`<div class="user-aircraft \\${isSelected ? 'selected' : ''}" style="transform: rotate(\\${heading}deg);"><svg width="\\${size}" height="\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+    html: \\`<div class="user-aircraft \\\\${isSelected ? 'selected' : ''}" style="transform: rotate(\\\\${heading}deg);"><svg width="\\\\${size}" height="\\\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\\`,
                 className: '',
                 iconSize: [size, size],
                 iconAnchor: [size/2, size/2]
@@ -1688,7 +1688,7 @@ function updateAutopilotStatus(data) {
             const size = isSelected ? 18 : 16;
             
             return L.divIcon({
-                html: \`<div class="ai-aircraft \\${isSelected ? 'selected' : ''}" style="transform: rotate(\\${heading}deg);"><svg width="\\${size}" height="\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+    html: \\`<div class="ai-aircraft \\\\${isSelected ? 'selected' : ''}" style="transform: rotate(\\\\${heading}deg);"><svg width="\\\\${size}" height="\\\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\\`,
                 className: '',
                 iconSize: [size, size],
                 iconAnchor: [size/2, size/2]
