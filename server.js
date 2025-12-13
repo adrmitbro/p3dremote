@@ -1789,8 +1789,7 @@ function updateAutopilotStatus(data) {
                 : "";
             const userAircraftModel = currentFlightData.atcModel || currentFlightData.atcType || "User Aircraft";
 
-            const userPopupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\\${userCallsign}</h4>\\${userFlightInfo ? \`<p style="margin:0 0 5px 0">\\${userFlightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \\${userAircraftModel}</p><p style="margin:0 0 5px 0">Speed: \\${Math.round(currentFlightData.groundSpeed || 0)} kts</p><p style="margin:0 0 5px 0">Altitude: \\${Math.round(currentFlightData.altitude || 0)} ft</p><p style="margin:0">Heading: \\${Math.round(currentFlightData.heading || 0)}°</p></div>\`;
-
+const userPopupContent = '<div style="min-width:200px"><h4 style="margin:0 0 5px 0">' + userCallsign + '</h4>' + (userFlightInfo ? '<p style="margin:0 0 5px 0">' + userFlightInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Aircraft: ' + userAircraftModel + '</p><p style="margin:0 0 5px 0">Speed: ' + Math.round(currentFlightData.groundSpeed || 0) + ' kts</p><p style="margin:0 0 5px 0">Altitude: ' + Math.round(currentFlightData.altitude || 0) + ' ft</p><p style="margin:0">Heading: ' + Math.round(currentFlightData.heading || 0) + '°</p></div>';
             userMarker.bindPopup(userPopupContent);
 
 userMarker.on('click', function(e) {
@@ -1827,8 +1826,7 @@ userMarker.on('click', function(e) {
                     routeInfo = "To " + aircraft.destinationAirport;
                 }
                 
-                const popupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\\${callsign}</h4>\\${flightInfo ? \`<p style="margin:0 0 5px 0">\\${flightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \\${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\\${routeInfo ? \`<p style="margin:0 0 5px 0">Route: \\${routeInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Speed: \\${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0 0 5px 0">Altitude: \\${Math.round(aircraft.altitude)} ft</p><p style="margin:0">Distance: \\${aircraft.distanceFromUser.toFixed(1)} nm</p></div>\`;
-                
+const popupContent = '<div style="min-width:200px"><h4 style="margin:0 0 5px 0">' + callsign + '</h4>' + (flightInfo ? '<p style="margin:0 0 5px 0">' + flightInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Aircraft: ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p style="margin:0 0 5px 0">Route: ' + routeInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Speed: ' + Math.round(aircraft.groundSpeed) + ' kts</p><p style="margin:0 0 5px 0">Altitude: ' + Math.round(aircraft.altitude) + ' ft</p><p style="margin:0">Distance: ' + aircraft.distanceFromUser.toFixed(1) + ' nm</p></div>';                
                 marker.bindPopup(popupContent);
                 
                 marker.on('click', function(e) {
@@ -1926,8 +1924,7 @@ function updateUserAircraftDetails() {
                 routeInfo = "To " + aircraft.destinationAirport;
             }
             
-            detailsPanel.innerHTML = \`<h4 style="margin-top:0">\\${callsign}</h4>\\${flightInfo ? \`<p><strong>Flight:</strong> \\${flightInfo}</p>\` : ""}<p><strong>Aircraft:</strong> \\${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\\${routeInfo ? \`<p><strong>Route:</strong> \\${routeInfo}</p>\` : ""}<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">\\${aircraft.departureAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">\\${aircraft.destinationAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">\\${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">\\${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">\\${aircraft.distanceFromUser.toFixed(1)} nm</span></div>\`;
-        }
+detailsPanel.innerHTML = '<h4 style="margin-top:0">' + callsign + '</h4>' + (flightInfo ? '<p><strong>Flight:</strong> ' + flightInfo + '</p>' : '') + '<p><strong>Aircraft:</strong> ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p><strong>Route:</strong> ' + routeInfo + '</p>' : '') + '<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">' + (aircraft.departureAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">' + (aircraft.destinationAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">' + Math.round(aircraft.groundSpeed) + ' kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">' + Math.round(aircraft.altitude) + ' ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">' + aircraft.distanceFromUser.toFixed(1) + ' nm</span></div>';        }
 
         function updateNearbyAircraftList() {
             const list = document.getElementById('nearbyAircraftList');
@@ -1941,8 +1938,8 @@ function updateUserAircraftDetails() {
                 userItem.classList.add('selected');
             }
             
-            userItem.innerHTML = \`<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>\`;
-            
+item.innerHTML = '<div class="aircraft-callsign">' + callsign + '</div><div class="aircraft-distance">' + aircraft.distanceFromUser.toFixed(1) + ' nm</div>';
+
             userItem.addEventListener('click', function() {
                 selectedAircraft = { isUser: true };
                 map.setView([userLat, userLon], mapZoom);
@@ -3521,6 +3518,7 @@ window.onload = () => {
 server.listen(PORT, () => {
     console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
