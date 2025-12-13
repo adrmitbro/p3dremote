@@ -1914,15 +1914,23 @@ function updateUserAircraftDetails() {
             
 detailsPanel.innerHTML = '<h4 style="margin-top:0">' + callsign + '</h4>' + (flightInfo ? '<p><strong>Flight:</strong> ' + flightInfo + '</p>' : '') + '<p><strong>Aircraft:</strong> ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p><strong>Route:</strong> ' + routeInfo + '</p>' : '') + '<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">' + (aircraft.departureAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">' + (aircraft.destinationAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">' + Math.round(aircraft.groundSpeed) + ' kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">' + Math.round(aircraft.altitude) + ' ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">' + aircraft.distanceFromUser.toFixed(1) + ' nm</span></div>';        }
 
-const userItem = document.createElement('div');
-userItem.className = 'aircraft-list-item';
-if (selectedAircraft && selectedAircraft.isUser) {
-    userItem.classList.add('selected');
-}
+function updateNearbyAircraftList() {
+    const list = document.getElementById('nearbyAircraftList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    const userItem = document.createElement('div');
+    userItem.className = 'aircraft-list-item';
+    if (selectedAircraft && selectedAircraft.isUser) {
+        userItem.classList.add('selected');
+    }
+    
+    userItem.innerHTML = '<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>';
 
-userItem.innerHTML = '<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>';
-
-userItem.addEventListener('click', function() {
+    // DELETE ANY LINE HERE THAT MENTIONS "aircraft.distanceFromUser"
+    
+    userItem.addEventListener('click', function() {
                 selectedAircraft = { isUser: true };
                 map.setView([userLat, userLon], mapZoom);
                 followUser = true;
@@ -3501,6 +3509,7 @@ window.onload = () => {
 server.listen(PORT, () => {
     console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
