@@ -59,7 +59,7 @@ if (data.type === 'register_pc') {
   }
         
         ws.send(JSON.stringify({ type: 'registered', uniqueId }));
-        console.log(`PC registered: \${uniqueId}`);
+        console.log(`PC registered: ${uniqueId}`);
       }
       
       else if (data.type === 'connect_mobile') {
@@ -83,7 +83,7 @@ if (data.type === 'register_pc') {
           pcOnline: !!session.pcClient
         }));
         
-        console.log(`Mobile connected to: \${uniqueId}`);
+        console.log(`Mobile connected to: ${uniqueId}`);
       }
       
 else if (data.type === 'request_control') {
@@ -101,34 +101,6 @@ else if (data.type === 'request_control') {
     ws.send(JSON.stringify({ type: 'auth_failed' }));
     return;
   }
-
-  else if (data.type === 'video_frame') {
-  const session = sessions.get(ws.uniqueId);
-  if (!session) return;
-  
-  session.mobileClients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
-}
-
-else if (data.type === 'flight_control') {
-  const session = sessions.get(ws.uniqueId);
-  if (!session || !session.pcClient) return;
-  
-  if (!ws.hasControlAccess) {
-    ws.send(JSON.stringify({ 
-      type: 'control_required',
-      message: 'Enter password to access flight controls'
-    }));
-    return;
-  }
-  
-  if (session.pcClient.readyState === WebSocket.OPEN) {
-    session.pcClient.send(JSON.stringify(data));
-  }
-}
   
   // Check main password or guest password (only if guest password is enabled)
   const isMainPassword = password === session.password;
@@ -142,39 +114,6 @@ else if (data.type === 'flight_control') {
     ws.send(JSON.stringify({ type: 'control_granted' }));
   } else {
     ws.send(JSON.stringify({ type: 'auth_failed' }));
-  }
-}
-
-  else if (data.type === 'video_frame') {
-  // PC sending video frame
-  const session = sessions.get(ws.uniqueId);
-  if (!session) return;
-  
-  // Broadcast video to all connected mobile clients
-  session.mobileClients.forEach(client => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(data));
-    }
-  });
-}
-
-else if (data.type === 'flight_control') {
-  // Mobile sending flight control inputs
-  const session = sessions.get(ws.uniqueId);
-  if (!session || !session.pcClient) return;
-  
-  // Check if user has control access
-  if (!ws.hasControlAccess) {
-    ws.send(JSON.stringify({ 
-      type: 'control_required',
-      message: 'Enter password to access flight controls'
-    }));
-    return;
-  }
-  
-  // Forward controls to PC
-  if (session.pcClient.readyState === WebSocket.OPEN) {
-    session.pcClient.send(JSON.stringify(data));
   }
 }
       
@@ -231,7 +170,7 @@ else if (data.type === 'flight_control') {
       const session = sessions.get(ws.uniqueId);
       
       if (ws.clientType === 'pc') {
-        console.log(`PC disconnected: \${ws.uniqueId}`);
+        console.log(`PC disconnected: ${ws.uniqueId}`);
         session.pcClient = null;
         
         // Notify mobile clients
@@ -243,7 +182,7 @@ else if (data.type === 'flight_control') {
       }
       else if (ws.clientType === 'mobile') {
         session.mobileClients.delete(ws);
-        console.log(`Mobile disconnected from: \${ws.uniqueId}`);
+        console.log(`Mobile disconnected from: ${ws.uniqueId}`);
       }
     }
   });
@@ -816,7 +755,6 @@ function getMobileAppHTML() {
     <button class='tab' onclick='switchTab(1)'>Map</button>
     <button class='tab' onclick='switchTab(2)'>Instruments</button>
     <button class='tab' onclick='switchTab(3)'>Autopilot</button>
-    <button class='tab' onclick='switchTab(4)'>Flight Control</button>
 </div>
 
 <!-- Flight Tab -->
@@ -1157,130 +1095,8 @@ function getMobileAppHTML() {
 </div>
     </div>
 
-    <!-- Flight Control Tab (NEW) -->
-<div class='tab-content'>
-    <!-- Video Stream -->
-    <div id='videoContainer' style='position: relative; width: 100%; height: 35vh; background: #000; overflow: hidden; margin-bottom: 10px;'>
-        <img id='videoStream' style='width: 100%; height: 100%; object-fit: cover; display: none;' />
-        <div id='videoPlaceholder' style='position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: linear-gradient(to bottom, #1a365d 0%, #0f172a 100%); color: #64748b; font-size: 14px;'>
-            <div>📡 Waiting for video stream...</div>
-        </div>
-        
-        <div style='position: absolute; top: 10px; left: 10px; background: rgba(0, 0, 0, 0.7); padding: 10px; border-radius: 8px; font-size: 11px; backdrop-filter: blur(4px);'>
-            <div>ALT: <span id='overlayAlt'>--</span> ft</div>
-            <div>SPD: <span id='overlaySpd'>--</span> kts</div>
-            <div>HDG: <span id='overlayHdg'>--</span>°</div>
-            <div>V/S: <span id='overlayVs'>--</span> fpm</div>
-        </div>
-        
-        <button onclick='toggleVideoSize()' style='position: absolute; top: 10px; right: 10px; background: rgba(0, 0, 0, 0.7); border: 1px solid #333; color: white; padding: 6px 12px; border-radius: 6px; font-size: 11px; cursor: pointer;'>⛶ Expand</button>
-    </div>
-
-    <!-- Control Mode Selector -->
-    <div style='display: flex; gap: 5px; margin-bottom: 10px; background: #0d0d0d; border-radius: 8px; padding: 5px;'>
-        <button class='control-mode-tab active' onclick='switchControlMode("yoke")' style='flex: 1; padding: 10px; border: none; background: #167fac; color: white; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;'>Virtual Yoke</button>
-        <button class='control-mode-tab' onclick='switchControlMode("motion")' style='flex: 1; padding: 10px; border: none; background: #1a1a1a; color: #666; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;'>Motion</button>
-        <button class='control-mode-tab' onclick='switchControlMode("touch")' style='flex: 1; padding: 10px; border: none; background: #1a1a1a; color: #666; border-radius: 6px; font-size: 11px; font-weight: bold; cursor: pointer;'>Touch Pad</button>
-    </div>
-
-    <!-- Virtual Yoke Mode -->
-    <div id='yokeControls' style='display: flex; flex-direction: column; align-items: center; gap: 15px;'>
-        <div id='yokePad' style='position: relative; width: 260px; height: 260px; background: #1a1a1a; border-radius: 50%; border: 3px solid #333; touch-action: none;'>
-            <div style='position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; background: #333; transform: translateX(-50%);'></div>
-            <div style='position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: #333; transform: translateY(-50%);'></div>
-            <div id='yokeHandle' style='position: absolute; width: 70px; height: 70px; background: #167fac; border-radius: 50%; border: 4px solid #1a8fd4; box-shadow: 0 0 20px rgba(22, 127, 172, 0.5); display: flex; align-items: center; justify-content: center; font-size: 24px; top: 50%; left: 50%; transform: translate(-50%, -50%); transition: transform 0.05s;'>✈</div>
-            <span style='position: absolute; top: 5px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #666;'>PITCH UP</span>
-            <span style='position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); font-size: 10px; color: #666;'>PITCH DN</span>
-            <span style='position: absolute; left: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #666;'>L</span>
-            <span style='position: absolute; right: 5px; top: 50%; transform: translateY(-50%); font-size: 10px; color: #666;'>R</span>
-        </div>
-        
-        <div style='width: 100%;'>
-            <div style='display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;'>
-                <span>Rudder</span>
-                <span style='color: #167fac; font-weight: bold;' id='rudderValue'>0%</span>
-            </div>
-            <input type='range' id='rudderSlider' min='-100' max='100' value='0' style='width: 100%; height: 40px; -webkit-appearance: none; appearance: none; background: #1a1a1a; border-radius: 10px; outline: none;' />
-        </div>
-        
-        <div style='width: 100%;'>
-            <div style='display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;'>
-                <span>Throttle</span>
-                <span style='color: #167fac; font-weight: bold;' id='throttleValue'>0%</span>
-            </div>
-            <input type='range' id='throttleSlider' min='0' max='100' value='0' style='width: 100%; height: 40px; -webkit-appearance: none; appearance: none; background: #1a1a1a; border-radius: 10px; outline: none;' />
-        </div>
-    </div>
-
-    <!-- Motion Control Mode -->
-    <div id='motionControls' class='hidden' style='display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 20px;'>
-        <div style='font-size: 60px;'>📱</div>
-        <h3>Motion Control Active</h3>
-        <p style='text-align: center; color: #888;'>
-            Tilt your device forward/back for pitch<br>
-            Tilt left/right for roll
-        </p>
-        <div style='background: #1a1a1a; padding: 15px; border-radius: 10px; width: 100%; max-width: 300px;'>
-            <div style='display: flex; justify-content: space-between; margin: 8px 0; font-size: 13px;'>
-                <span>Pitch:</span>
-                <span id='motionPitch'>0%</span>
-            </div>
-            <div style='display: flex; justify-content: space-between; margin: 8px 0; font-size: 13px;'>
-                <span>Roll:</span>
-                <span id='motionRoll'>0%</span>
-            </div>
-        </div>
-        
-        <div style='width: 100%; max-width: 300px;'>
-            <div style='display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;'>
-                <span>Throttle</span>
-                <span style='color: #167fac; font-weight: bold;' id='throttleValueMotion'>0%</span>
-            </div>
-            <input type='range' id='throttleSliderMotion' min='0' max='100' value='0' style='width: 100%; height: 40px;' />
-        </div>
-    </div>
-
-    <!-- Touch Pad Mode -->
-    <div id='touchControls' class='hidden' style='display: none; flex-direction: column; gap: 15px;'>
-        <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; max-width: 320px; margin: 0 auto;'>
-            <div></div>
-            <button id='touchUp' style='height: 80px; background: #1a1a1a; border: 2px solid #333; border-radius: 10px; color: white; font-size: 28px; cursor: pointer;'>↑</button>
-            <div></div>
-            
-            <button id='touchLeft' style='height: 80px; background: #1a1a1a; border: 2px solid #333; border-radius: 10px; color: white; font-size: 28px; cursor: pointer;'>←</button>
-            <div></div>
-            <button id='touchRight' style='height: 80px; background: #1a1a1a; border: 2px solid #333; border-radius: 10px; color: white; font-size: 28px; cursor: pointer;'>→</button>
-            
-            <div></div>
-            <button id='touchDown' style='height: 80px; background: #1a1a1a; border: 2px solid #333; border-radius: 10px; color: white; font-size: 28px; cursor: pointer;'>↓</button>
-            <div></div>
-        </div>
-        
-        <div style='width: 100%;'>
-            <div style='display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 12px;'>
-                <span>Throttle</span>
-                <span style='color: #167fac; font-weight: bold;' id='throttleValueTouch'>0%</span>
-            </div>
-            <input type='range' id='throttleSliderTouch' min='0' max='100' value='0' style='width: 100%; height: 40px;' />
-        </div>
-    </div>
-
-    <!-- Quick Actions (always visible) -->
-    <div style='display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 15px;'>
-        <button onclick='sendQuickAction("gear")' style='padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 11px; font-weight: bold; cursor: pointer;'>🔧 Gear</button>
-        <button onclick='sendQuickAction("flaps", 1)' style='padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 11px; font-weight: bold; cursor: pointer;'>🛬 Flaps+</button>
-        <button onclick='sendQuickAction("flaps", -1)' style='padding: 12px; background: #1a1a1a; border: 1px solid #333; border-radius: 8px; color: white; font-size: 11px; font-weight: bold; cursor: pointer;'>🛫 Flaps-</button>
-    </div>
-</div>
-
     <script>
         let ws = null;
-        let controlMode = 'yoke';
-let isVideoFullscreen = false;
-let controls = { pitch: 0, roll: 0, yaw: 0, throttle: 0 };
-let isDragging = false;
-let yokeCenter = { x: 0, y: 0 };
-let motionPermissionGranted = false;
         let map = null;
         let aircraftMarkers = [];
         let aiAircraft = [];
@@ -1408,10 +1224,6 @@ case 'autopilot_state':
     console.log('Received autopilot_state:', data.data);
     updateAutopilotUI(data.data);
     break;
-
-    case 'video_frame':
-    displayVideoFrame(data.data);
-    break;
                     
                 case 'ai_traffic':
                     aiAircraft = data.data;
@@ -1438,12 +1250,6 @@ case 'autopilot_state':
             document.getElementById('altitude').textContent = Math.round(data.altitude).toLocaleString();
             document.getElementById('heading').textContent = Math.round(data.heading) + '°';
             document.getElementById('vs').textContent = Math.round(data.verticalSpeed);
-            if (document.getElementById('overlayAlt')) {
-    document.getElementById('overlayAlt').textContent = Math.round(data.altitude || 0);
-    document.getElementById('overlaySpd').textContent = Math.round(data.groundSpeed || 0);
-    document.getElementById('overlayHdg').textContent = Math.round(data.heading || 0);
-    document.getElementById('overlayVs').textContent = Math.round(data.verticalSpeed || 0);
-}
             
             document.getElementById('nextWaypoint').textContent = data.nextWaypoint || 'No Active Waypoint';
             document.getElementById('wpDistance').textContent = 'Distance: ' + (data.distanceToWaypoint ? data.distanceToWaypoint.toFixed(1) + ' nm' : '--');
@@ -1671,17 +1477,29 @@ function updateAutopilotStatus(data) {
             btn.textContent = text || (state ? 'ON' : 'OFF');
         }
 
-function createUserAircraftIcon(heading, isSelected) {
-    const color = isSelected ? "#FF0000" : "#FFD700";
-    const size = isSelected ? 26 : 24;
-    
-    return L.divIcon({
-        html: '<div class="user-aircraft ' + (isSelected ? 'selected' : '') + '" style="transform: rotate(' + heading + 'deg);"><svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="' + color + '" stroke="#000" stroke-width="0.5"/></svg></div>',
-        className: '',
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
-    });
-}
+        function createUserAircraftIcon(heading, isSelected) {
+            const color = isSelected ? "#FF0000" : "#FFD700";
+            const size = isSelected ? 26 : 24;
+            
+            return L.divIcon({
+                html: \`<div class="user-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+        }
+
+        function createAIAircraftIcon(heading, isSelected) {
+            const color = isSelected ? "#FF0000" : "#FFFFFF";
+            const size = isSelected ? 18 : 16;
+            
+            return L.divIcon({
+                html: \`<div class="ai-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+        }
 
         function initMap() {
             map = L.map('map', {
@@ -1777,7 +1595,8 @@ function createUserAircraftIcon(heading, isSelected) {
                 : "";
             const userAircraftModel = currentFlightData.atcModel || currentFlightData.atcType || "User Aircraft";
 
-const userPopupContent = '<div style="min-width:200px"><h4 style="margin:0 0 5px 0">' + userCallsign + '</h4>' + (userFlightInfo ? '<p style="margin:0 0 5px 0">' + userFlightInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Aircraft: ' + userAircraftModel + '</p><p style="margin:0 0 5px 0">Speed: ' + Math.round(currentFlightData.groundSpeed || 0) + ' kts</p><p style="margin:0 0 5px 0">Altitude: ' + Math.round(currentFlightData.altitude || 0) + ' ft</p><p style="margin:0">Heading: ' + Math.round(currentFlightData.heading || 0) + '°</p></div>';
+            const userPopupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\${userCallsign}</h4>\${userFlightInfo ? \`<p style="margin:0 0 5px 0">\${userFlightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \${userAircraftModel}</p><p style="margin:0 0 5px 0">Speed: \${Math.round(currentFlightData.groundSpeed || 0)} kts</p><p style="margin:0 0 5px 0">Altitude: \${Math.round(currentFlightData.altitude || 0)} ft</p><p style="margin:0">Heading: \${Math.round(currentFlightData.heading || 0)}°</p></div>\`;
+
             userMarker.bindPopup(userPopupContent);
 
 userMarker.on('click', function(e) {
@@ -1814,7 +1633,8 @@ userMarker.on('click', function(e) {
                     routeInfo = "To " + aircraft.destinationAirport;
                 }
                 
-const popupContent = '<div style="min-width:200px"><h4 style="margin:0 0 5px 0">' + callsign + '</h4>' + (flightInfo ? '<p style="margin:0 0 5px 0">' + flightInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Aircraft: ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p style="margin:0 0 5px 0">Route: ' + routeInfo + '</p>' : '') + '<p style="margin:0 0 5px 0">Speed: ' + Math.round(aircraft.groundSpeed) + ' kts</p><p style="margin:0 0 5px 0">Altitude: ' + Math.round(aircraft.altitude) + ' ft</p><p style="margin:0">Distance: ' + aircraft.distanceFromUser.toFixed(1) + ' nm</p></div>';                
+                const popupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\${callsign}</h4>\${flightInfo ? \`<p style="margin:0 0 5px 0">\${flightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\${routeInfo ? \`<p style="margin:0 0 5px 0">Route: \${routeInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Speed: \${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0 0 5px 0">Altitude: \${Math.round(aircraft.altitude)} ft</p><p style="margin:0">Distance: \${aircraft.distanceFromUser.toFixed(1)} nm</p></div>\`;
+                
                 marker.bindPopup(popupContent);
                 
                 marker.on('click', function(e) {
@@ -1829,7 +1649,7 @@ const popupContent = '<div style="min-width:200px"><h4 style="margin:0 0 5px 0">
                 
                 if (showAircraftLabels) {
                     const label = L.divIcon({
-                        html: \`<div style="background:rgba(0,0,0,0.7);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">\\${aircraft.atcId || aircraft.title.substring(0, 10)}</div>\`,
+                        html: \`<div style="background:rgba(0,0,0,0.7);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">\${aircraft.atcId || aircraft.title.substring(0, 10)}</div>\`,
                         className: '',
                         iconSize: [100, 20],
                         iconAnchor: [50, -10]
@@ -1912,25 +1732,24 @@ function updateUserAircraftDetails() {
                 routeInfo = "To " + aircraft.destinationAirport;
             }
             
-detailsPanel.innerHTML = '<h4 style="margin-top:0">' + callsign + '</h4>' + (flightInfo ? '<p><strong>Flight:</strong> ' + flightInfo + '</p>' : '') + '<p><strong>Aircraft:</strong> ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p><strong>Route:</strong> ' + routeInfo + '</p>' : '') + '<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">' + (aircraft.departureAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">' + (aircraft.destinationAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">' + Math.round(aircraft.groundSpeed) + ' kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">' + Math.round(aircraft.altitude) + ' ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">' + aircraft.distanceFromUser.toFixed(1) + ' nm</span></div>';        }
+            detailsPanel.innerHTML = \`<h4 style="margin-top:0">\${callsign}</h4>\${flightInfo ? \`<p><strong>Flight:</strong> \${flightInfo}</p>\` : ""}<p><strong>Aircraft:</strong> \${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\${routeInfo ? \`<p><strong>Route:</strong> \${routeInfo}</p>\` : ""}<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">\${aircraft.departureAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">\${aircraft.destinationAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">\${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">\${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">\${aircraft.distanceFromUser.toFixed(1)} nm</span></div>\`;
+        }
 
-function updateNearbyAircraftList() {
-    const list = document.getElementById('nearbyAircraftList');
-    if (!list) return;
-    
-    list.innerHTML = '';
-    
-    const userItem = document.createElement('div');
-    userItem.className = 'aircraft-list-item';
-    if (selectedAircraft && selectedAircraft.isUser) {
-        userItem.classList.add('selected');
-    }
-    
-    userItem.innerHTML = '<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>';
-
-    // DELETE ANY LINE HERE THAT MENTIONS "aircraft.distanceFromUser"
-    
-    userItem.addEventListener('click', function() {
+        function updateNearbyAircraftList() {
+            const list = document.getElementById('nearbyAircraftList');
+            if (!list) return;
+            
+            list.innerHTML = '';
+            
+            const userItem = document.createElement('div');
+            userItem.className = 'aircraft-list-item';
+            if (selectedAircraft && selectedAircraft.isUser) {
+                userItem.classList.add('selected');
+            }
+            
+            userItem.innerHTML = \`<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>\`;
+            
+            userItem.addEventListener('click', function() {
                 selectedAircraft = { isUser: true };
                 map.setView([userLat, userLon], mapZoom);
                 followUser = true;
@@ -1960,9 +1779,8 @@ function updateNearbyAircraftList() {
                      (!selectedAircraft.atcId && selectedAircraft.title === aircraft.title))) {
                     item.classList.add('selected');
                 }
-
-                    item.innerHTML = '<div class="aircraft-callsign">' + callsign + '</div><div class="aircraft-distance">' + aircraft.distanceFromUser.toFixed(1) + ' nm</div>';
-
+                
+                item.innerHTML = \`<div class="aircraft-callsign">\${callsign}</div><div class="aircraft-distance">\${aircraft.distanceFromUser.toFixed(1)} nm</div>\`;
                 
                 item.addEventListener('click', function() {
                     selectedAircraft = aircraft;
@@ -3255,239 +3073,7 @@ function drawArcGauge(ctx, x, y, radius, value, max, color) {
         ctx.stroke();
     }
 }
-function displayVideoFrame(base64Data) {
-    const videoStream = document.getElementById('videoStream');
-    const placeholder = document.getElementById('videoPlaceholder');
-    
-    if (videoStream && placeholder) {
-        videoStream.src = 'data:image/jpeg;base64,' + base64Data;
-        videoStream.style.display = 'block';
-        placeholder.style.display = 'none';
-    }
-}
 
-function toggleVideoSize() {
-    isVideoFullscreen = !isVideoFullscreen;
-    const container = document.getElementById('videoContainer');
-    if (container) {
-        container.style.height = isVideoFullscreen ? '60vh' : '35vh';
-    }
-}
-
-function switchControlMode(mode) {
-    controlMode = mode;
-    
-    // Update tabs
-    document.querySelectorAll('.control-mode-tab').forEach((tab, i) => {
-        if ((i === 0 && mode === 'yoke') || (i === 1 && mode === 'motion') || (i === 2 && mode === 'touch')) {
-            tab.style.background = '#167fac';
-            tab.style.color = 'white';
-        } else {
-            tab.style.background = '#1a1a1a';
-            tab.style.color = '#666';
-        }
-    });
-    
-    // Show/hide controls
-    const yokeControls = document.getElementById('yokeControls');
-    const motionControls = document.getElementById('motionControls');
-    const touchControls = document.getElementById('touchControls');
-    
-    if (yokeControls) yokeControls.style.display = mode === 'yoke' ? 'flex' : 'none';
-    if (motionControls) motionControls.style.display = mode === 'motion' ? 'flex' : 'none';
-    if (touchControls) touchControls.style.display = mode === 'touch' ? 'flex' : 'none';
-    
-    if (mode === 'motion' && !motionPermissionGranted) {
-        requestMotionPermission();
-    }
-}
-
-function initFlightControls() {
-    // Yoke controls
-    const yokePad = document.getElementById('yokePad');
-    const yokeHandle = document.getElementById('yokeHandle');
-    
-    if (yokePad && yokeHandle) {
-        function startDrag(e) {
-            e.preventDefault();
-            isDragging = true;
-            const rect = yokePad.getBoundingClientRect();
-            yokeCenter = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-            updateYoke(e);
-        }
-        
-        function moveDrag(e) {
-            if (!isDragging) return;
-            e.preventDefault();
-            updateYoke(e);
-        }
-        
-        function endDrag() {
-            isDragging = false;
-            yokeHandle.style.transform = 'translate(-50%, -50%)';
-            controls.pitch = 0;
-            controls.roll = 0;
-            sendControls();
-        }
-        
-        function updateYoke(e) {
-            const touch = e.touches ? e.touches[0] : e;
-            const rect = yokePad.getBoundingClientRect();
-            
-            let deltaX = touch.clientX - yokeCenter.x;
-            let deltaY = touch.clientY - yokeCenter.y;
-            
-            const maxDistance = rect.width / 2 - 40;
-            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            
-            if (distance > maxDistance) {
-                const angle = Math.atan2(deltaY, deltaX);
-                deltaX = Math.cos(angle) * maxDistance;
-                deltaY = Math.sin(angle) * maxDistance;
-            }
-            
-yokeHandle.style.transform = 'translate(calc(-50% + ' + deltaX + 'px), calc(-50% + ' + deltaY + 'px))';
-controls.roll = deltaX / maxDistance;
-            controls.pitch = -deltaY / maxDistance;
-            
-            sendControls();
-        }
-        
-        yokePad.addEventListener('mousedown', startDrag);
-        yokePad.addEventListener('mousemove', moveDrag);
-        yokePad.addEventListener('mouseup', endDrag);
-        yokePad.addEventListener('mouseleave', endDrag);
-        yokePad.addEventListener('touchstart', startDrag);
-        yokePad.addEventListener('touchmove', moveDrag);
-        yokePad.addEventListener('touchend', endDrag);
-    }
-    
-    // Sliders
-    const rudderSlider = document.getElementById('rudderSlider');
-    const throttleSlider = document.getElementById('throttleSlider');
-    const throttleSliderMotion = document.getElementById('throttleSliderMotion');
-    const throttleSliderTouch = document.getElementById('throttleSliderTouch');
-    
-    if (rudderSlider) {
-        rudderSlider.addEventListener('input', (e) => {
-            const value = parseInt(e.target.value);
-            controls.yaw = value / 100;
-            document.getElementById('rudderValue').textContent = value + '%';
-            sendControls();
-        });
-    }
-    
-    [throttleSlider, throttleSliderMotion, throttleSliderTouch].forEach(slider => {
-        if (slider) {
-            slider.addEventListener('input', (e) => {
-                const value = parseInt(e.target.value);
-                controls.throttle = value / 100;
-                document.querySelectorAll('[id^="throttleValue"]').forEach(el => {
-                    el.textContent = value + '%';
-                });
-                [throttleSlider, throttleSliderMotion, throttleSliderTouch].forEach(s => {
-                    if (s) s.value = value;
-                });
-                sendControls();
-            });
-        }
-    });
-    
-    // Touch controls
-    const touchButtons = {
-        touchUp: { pitch: -0.5, roll: 0 },
-        touchDown: { pitch: 0.5, roll: 0 },
-        touchLeft: { pitch: 0, roll: -0.5 },
-        touchRight: { pitch: 0, roll: 0.5 }
-    };
-    
-    Object.keys(touchButtons).forEach(id => {
-        const btn = document.getElementById(id);
-        if (btn) {
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                controls.pitch = touchButtons[id].pitch;
-                controls.roll = touchButtons[id].roll;
-                sendControls();
-            });
-            
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                controls.pitch = 0;
-                controls.roll = 0;
-                sendControls();
-            });
-        }
-    });
-    
-    // Send controls at 30 FPS
-    setInterval(() => {
-        if (controlMode === 'yoke' || controlMode === 'motion') {
-            sendControls();
-        }
-    }, 33);
-}
-
-function requestMotionPermission() {
-    if (typeof DeviceOrientationEvent !== 'undefined' && 
-        typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-            .then(permission => {
-                if (permission === 'granted') {
-                    enableMotionControls();
-                } else {
-                    alert('Motion permission denied');
-                    switchControlMode('yoke');
-                }
-            });
-    } else {
-        enableMotionControls();
-    }
-}
-
-function enableMotionControls() {
-    motionPermissionGranted = true;
-    window.addEventListener('deviceorientation', handleMotion);
-}
-
-function handleMotion(event) {
-    if (controlMode !== 'motion') return;
-    
-    const beta = event.beta || 0;
-    const gamma = event.gamma || 0;
-    
-    controls.pitch = -Math.max(-30, Math.min(30, beta)) / 30;
-    controls.roll = Math.max(-45, Math.min(45, gamma)) / 45;
-    
-    const pitchEl = document.getElementById('motionPitch');
-    const rollEl = document.getElementById('motionRoll');
-    if (pitchEl) pitchEl.textContent = (controls.pitch * 100).toFixed(0) + '%';
-    if (rollEl) rollEl.textContent = (controls.roll * 100).toFixed(0) + '%';
-    
-    sendControls();
-}
-
-function sendControls() {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    
-    ws.send(JSON.stringify({
-        type: 'flight_control',
-        pitch: controls.pitch,
-        roll: controls.roll,
-        yaw: controls.yaw,
-        throttle: controls.throttle
-    }));
-}
-
-function sendQuickAction(action, direction) {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    
-    if (action === 'gear') {
-        ws.send(JSON.stringify({ type: 'toggle_gear' }));
-    } else if (action === 'flaps') {
-        ws.send(JSON.stringify({ type: 'change_flaps', direction: direction }));
-    }
-}
 window.onload = () => {
     const savedId = localStorage.getItem('p3d_unique_id');
     if (savedId) {
@@ -3498,8 +3084,6 @@ window.onload = () => {
     if (savedPassword) {
         document.getElementById('controlPassword').value = savedPassword;
     }
-    
-    initFlightControls();  // ← ADD THIS
 };
     </script>
 </body>
@@ -3507,17 +3091,8 @@ window.onload = () => {
 }
 
 server.listen(PORT, () => {
-    console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
+  console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
-
-
-
-
-
 
 
 
