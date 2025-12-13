@@ -3355,8 +3355,8 @@ function initFlightControls() {
                 deltaY = Math.sin(angle) * maxDistance;
             }
             
-yokeHandle.style.transform = \\`translate(calc(-50% + \\${deltaX}px), calc(-50% + \\${deltaY}px))\`;            
-            controls.roll = deltaX / maxDistance;
+yokeHandle.style.transform = 'translate(calc(-50% + ' + deltaX + 'px), calc(-50% + ' + deltaY + 'px))';
+controls.roll = deltaX / maxDistance;
             controls.pitch = -deltaY / maxDistance;
             
             sendControls();
@@ -3518,6 +3518,7 @@ window.onload = () => {
 server.listen(PORT, () => {
     console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
