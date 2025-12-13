@@ -1953,7 +1953,6 @@ userItem.addEventListener('click', function() {
                     item.classList.add('selected');
                 }
                 
-                item.innerHTML = \`<div class="aircraft-callsign">\\${callsign}</div><div class="aircraft-distance">\\${aircraft.distanceFromUser.toFixed(1)} nm</div>\`;
                 
                 item.addEventListener('click', function() {
                     selectedAircraft = aircraft;
@@ -3500,6 +3499,7 @@ window.onload = () => {
 server.listen(PORT, () => {
     console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
