@@ -1683,18 +1683,6 @@ function createUserAircraftIcon(heading, isSelected) {
     });
 }
 
-function createAIAircraftIcon(heading, isSelected) {
-    const color = isSelected ? "#FF0000" : "#FFFFFF";
-    const size = isSelected ? 18 : 16;
-    
-    return L.divIcon({
-        html: '<div class="ai-aircraft ' + (isSelected ? 'selected' : '') + '" style="transform: rotate(' + heading + 'deg);"><svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="' + color + '" stroke="#000" stroke-width="0.5"/></svg></div>',
-        className: '',
-        iconSize: [size, size],
-        iconAnchor: [size/2, size/2]
-    });
-}
-
         function initMap() {
             map = L.map('map', {
                 center: [0, 0],
@@ -1926,21 +1914,15 @@ function updateUserAircraftDetails() {
             
 detailsPanel.innerHTML = '<h4 style="margin-top:0">' + callsign + '</h4>' + (flightInfo ? '<p><strong>Flight:</strong> ' + flightInfo + '</p>' : '') + '<p><strong>Aircraft:</strong> ' + (aircraft.atcModel || aircraft.atcType || aircraft.title) + '</p>' + (routeInfo ? '<p><strong>Route:</strong> ' + routeInfo + '</p>' : '') + '<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">' + (aircraft.departureAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">' + (aircraft.destinationAirport || 'N/A') + '</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">' + Math.round(aircraft.groundSpeed) + ' kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">' + Math.round(aircraft.altitude) + ' ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">' + aircraft.distanceFromUser.toFixed(1) + ' nm</span></div>';        }
 
-        function updateNearbyAircraftList() {
-            const list = document.getElementById('nearbyAircraftList');
-            if (!list) return;
-            
-            list.innerHTML = '';
-            
-            const userItem = document.createElement('div');
-            userItem.className = 'aircraft-list-item';
-            if (selectedAircraft && selectedAircraft.isUser) {
-                userItem.classList.add('selected');
-            }
-            
-item.innerHTML = '<div class="aircraft-callsign">' + callsign + '</div><div class="aircraft-distance">' + aircraft.distanceFromUser.toFixed(1) + ' nm</div>';
+const userItem = document.createElement('div');
+userItem.className = 'aircraft-list-item';
+if (selectedAircraft && selectedAircraft.isUser) {
+    userItem.classList.add('selected');
+}
 
-            userItem.addEventListener('click', function() {
+userItem.innerHTML = '<div class="aircraft-callsign">Your Aircraft</div><div class="aircraft-distance">0 nm</div>';
+
+userItem.addEventListener('click', function() {
                 selectedAircraft = { isUser: true };
                 map.setView([userLat, userLon], mapZoom);
                 followUser = true;
@@ -3518,6 +3500,7 @@ window.onload = () => {
 server.listen(PORT, () => {
     console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
