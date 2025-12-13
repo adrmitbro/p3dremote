@@ -59,7 +59,7 @@ if (data.type === 'register_pc') {
   }
         
         ws.send(JSON.stringify({ type: 'registered', uniqueId }));
-        console.log(`PC registered: ${uniqueId}`);
+        console.log(`PC registered: \${uniqueId}`);
       }
       
       else if (data.type === 'connect_mobile') {
@@ -83,7 +83,7 @@ if (data.type === 'register_pc') {
           pcOnline: !!session.pcClient
         }));
         
-        console.log(`Mobile connected to: ${uniqueId}`);
+        console.log(`Mobile connected to: \${uniqueId}`);
       }
       
 else if (data.type === 'request_control') {
@@ -231,7 +231,7 @@ else if (data.type === 'flight_control') {
       const session = sessions.get(ws.uniqueId);
       
       if (ws.clientType === 'pc') {
-        console.log(`PC disconnected: ${ws.uniqueId}`);
+        console.log(`PC disconnected: \${ws.uniqueId}`);
         session.pcClient = null;
         
         // Notify mobile clients
@@ -243,7 +243,7 @@ else if (data.type === 'flight_control') {
       }
       else if (ws.clientType === 'mobile') {
         session.mobileClients.delete(ws);
-        console.log(`Mobile disconnected from: ${ws.uniqueId}`);
+        console.log(`Mobile disconnected from: \${ws.uniqueId}`);
       }
     }
   });
@@ -1676,7 +1676,7 @@ function updateAutopilotStatus(data) {
             const size = isSelected ? 26 : 24;
             
             return L.divIcon({
-                html: \`<div class="user-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                html: \`<div class="user-aircraft \\${isSelected ? 'selected' : ''}" style="transform: rotate(\\${heading}deg);"><svg width="\\${size}" height="\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
                 className: '',
                 iconSize: [size, size],
                 iconAnchor: [size/2, size/2]
@@ -1688,7 +1688,7 @@ function updateAutopilotStatus(data) {
             const size = isSelected ? 18 : 16;
             
             return L.divIcon({
-                html: \`<div class="ai-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                html: \`<div class="ai-aircraft \\${isSelected ? 'selected' : ''}" style="transform: rotate(\\${heading}deg);"><svg width="\\${size}" height="\\${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
                 className: '',
                 iconSize: [size, size],
                 iconAnchor: [size/2, size/2]
@@ -1789,7 +1789,7 @@ function updateAutopilotStatus(data) {
                 : "";
             const userAircraftModel = currentFlightData.atcModel || currentFlightData.atcType || "User Aircraft";
 
-            const userPopupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\${userCallsign}</h4>\${userFlightInfo ? \`<p style="margin:0 0 5px 0">\${userFlightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \${userAircraftModel}</p><p style="margin:0 0 5px 0">Speed: \${Math.round(currentFlightData.groundSpeed || 0)} kts</p><p style="margin:0 0 5px 0">Altitude: \${Math.round(currentFlightData.altitude || 0)} ft</p><p style="margin:0">Heading: \${Math.round(currentFlightData.heading || 0)}°</p></div>\`;
+            const userPopupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\\${userCallsign}</h4>\\${userFlightInfo ? \`<p style="margin:0 0 5px 0">\\${userFlightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \\${userAircraftModel}</p><p style="margin:0 0 5px 0">Speed: \\${Math.round(currentFlightData.groundSpeed || 0)} kts</p><p style="margin:0 0 5px 0">Altitude: \\${Math.round(currentFlightData.altitude || 0)} ft</p><p style="margin:0">Heading: \\${Math.round(currentFlightData.heading || 0)}°</p></div>\`;
 
             userMarker.bindPopup(userPopupContent);
 
@@ -1827,7 +1827,7 @@ userMarker.on('click', function(e) {
                     routeInfo = "To " + aircraft.destinationAirport;
                 }
                 
-                const popupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\${callsign}</h4>\${flightInfo ? \`<p style="margin:0 0 5px 0">\${flightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\${routeInfo ? \`<p style="margin:0 0 5px 0">Route: \${routeInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Speed: \${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0 0 5px 0">Altitude: \${Math.round(aircraft.altitude)} ft</p><p style="margin:0">Distance: \${aircraft.distanceFromUser.toFixed(1)} nm</p></div>\`;
+                const popupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0">\\${callsign}</h4>\\${flightInfo ? \`<p style="margin:0 0 5px 0">\\${flightInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Aircraft: \\${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\\${routeInfo ? \`<p style="margin:0 0 5px 0">Route: \\${routeInfo}</p>\` : ""}<p style="margin:0 0 5px 0">Speed: \\${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0 0 5px 0">Altitude: \\${Math.round(aircraft.altitude)} ft</p><p style="margin:0">Distance: \\${aircraft.distanceFromUser.toFixed(1)} nm</p></div>\`;
                 
                 marker.bindPopup(popupContent);
                 
@@ -1843,7 +1843,7 @@ userMarker.on('click', function(e) {
                 
                 if (showAircraftLabels) {
                     const label = L.divIcon({
-                        html: \`<div style="background:rgba(0,0,0,0.7);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">\${aircraft.atcId || aircraft.title.substring(0, 10)}</div>\`,
+                        html: \`<div style="background:rgba(0,0,0,0.7);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">\\${aircraft.atcId || aircraft.title.substring(0, 10)}</div>\`,
                         className: '',
                         iconSize: [100, 20],
                         iconAnchor: [50, -10]
@@ -1926,7 +1926,7 @@ function updateUserAircraftDetails() {
                 routeInfo = "To " + aircraft.destinationAirport;
             }
             
-            detailsPanel.innerHTML = \`<h4 style="margin-top:0">\${callsign}</h4>\${flightInfo ? \`<p><strong>Flight:</strong> \${flightInfo}</p>\` : ""}<p><strong>Aircraft:</strong> \${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\${routeInfo ? \`<p><strong>Route:</strong> \${routeInfo}</p>\` : ""}<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">\${aircraft.departureAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">\${aircraft.destinationAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">\${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">\${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">\${aircraft.distanceFromUser.toFixed(1)} nm</span></div>\`;
+            detailsPanel.innerHTML = \`<h4 style="margin-top:0">\\${callsign}</h4>\\${flightInfo ? \`<p><strong>Flight:</strong> \\${flightInfo}</p>\` : ""}<p><strong>Aircraft:</strong> \\${aircraft.atcModel || aircraft.atcType || aircraft.title}</p>\\${routeInfo ? \`<p><strong>Route:</strong> \\${routeInfo}</p>\` : ""}<div class="detail-row"><span class="detail-label">Departure:</span><span class="detail-value">\\${aircraft.departureAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Destination:</span><span class="detail-value">\\${aircraft.destinationAirport || 'N/A'}</span></div><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">\\${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">\\${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Distance:</span><span class="detail-value">\\${aircraft.distanceFromUser.toFixed(1)} nm</span></div>\`;
         }
 
         function updateNearbyAircraftList() {
@@ -1974,7 +1974,7 @@ function updateUserAircraftDetails() {
                     item.classList.add('selected');
                 }
                 
-                item.innerHTML = \`<div class="aircraft-callsign">\${callsign}</div><div class="aircraft-distance">\${aircraft.distanceFromUser.toFixed(1)} nm</div>\`;
+                item.innerHTML = \`<div class="aircraft-callsign">\\${callsign}</div><div class="aircraft-distance">\\${aircraft.distanceFromUser.toFixed(1)} nm</div>\`;
                 
                 item.addEventListener('click', function() {
                     selectedAircraft = aircraft;
@@ -3358,8 +3358,7 @@ function initFlightControls() {
                 deltaY = Math.sin(angle) * maxDistance;
             }
             
-            yokeHandle.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
-            
+yokeHandle.style.transform = \\`translate(calc(-50% + \\${deltaX}px), calc(-50% + \\${deltaY}px))\`;            
             controls.roll = deltaX / maxDistance;
             controls.pitch = -deltaY / maxDistance;
             
@@ -3520,8 +3519,9 @@ window.onload = () => {
 }
 
 server.listen(PORT, () => {
-    console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
+    console.log(`P3D Remote Cloud Relay running on port \${PORT}`);
 });
+
 
 
 
