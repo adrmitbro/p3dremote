@@ -836,14 +836,16 @@ function getMobileAppHTML() {
 </div>
 
 <!-- Map Tab -->
-<div class='tab-content'>
-    <div class='map-controls'>
+<div class='map-controls'>
         <div class='map-controls-row'>
             <div class='map-buttons'>
                 <button id='followUserBtn' class='btn btn-secondary' onclick='toggleFollowUser()'>Follow Aircraft</button>
                 <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
             </div>
             <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
+        </div>
+        <div class='map-controls-row'>
+            <button id='toggleOnlineUsersBtn' class='btn btn-secondary' onclick='toggleOnlineUsers()' style='width: 100%;'>Show Online Users</button>
         </div>
     </div>
     
@@ -1142,6 +1144,8 @@ function getMobileAppHTML() {
         let mapDragStart = null;
         let isDragging = false;
         let showAircraftLabels = false;
+        let showOnlineUsers = false;
+        let onlineUserAircraft = [];
         let uniqueId = null;
         let hasControl = false;
         let isPaused = false;
@@ -1259,10 +1263,17 @@ case 'autopilot_state':
     updateAutopilotUI(data.data);
     break;
                     
-                case 'ai_traffic':
+case 'ai_traffic':
                     aiAircraft = data.data;
                     updateNearbyAircraftList();
                     if (map) {
+                        updateMap(userLat, userLon, userHeading);
+                    }
+                    break;
+                    
+                case 'online_aircraft':
+                    onlineUserAircraft = data.aircraft;
+                    if (map && showOnlineUsers) {
                         updateMap(userLat, userLon, userHeading);
                     }
                     break;
@@ -1535,6 +1546,18 @@ function updateAutopilotStatus(data) {
             });
         }
 
+        function createOnlineUserIcon(heading, isSelected) {
+            const color = isSelected ? "#FF0000" : "#00BFFF";
+            const size = isSelected ? 22 : 20;
+            
+            return L.divIcon({
+                html: `<div class="user-aircraft ${isSelected ? 'selected' : ''}" style="transform: rotate(${heading}deg);"><svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="${color}" stroke="#000" stroke-width="0.5"/></svg></div>`,
+                className: '',
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
+            });
+        }
+
         function initMap() {
             map = L.map('map', {
                 center: [0, 0],
@@ -1641,7 +1664,50 @@ userMarker.on('click', function(e) {
     updateNearbyAircraftList();
 });
             
-            aircraftMarkers.push(userMarker);
+aircraftMarkers.push(userMarker);
+            
+            // Draw online user aircraft if enabled
+            if (showOnlineUsers) {
+                onlineUserAircraft.forEach(aircraft => {
+                    // Don't show our own aircraft again
+                    if (aircraft.uniqueId === uniqueId.substring(0, 8)) return;
+                    
+                    const isSelected = selectedAircraft && selectedAircraft.isOnlineUser && 
+                                     selectedAircraft.uniqueId === aircraft.uniqueId;
+                    
+                    const marker = L.marker([aircraft.latitude, aircraft.longitude], { 
+                        icon: createOnlineUserIcon(aircraft.heading, isSelected)
+                    }).addTo(map);
+                    
+                    const callsign = aircraft.atcId || "User";
+                    
+                    const popupContent = `<div style="min-width:200px"><h4 style="margin:0 0 5px 0; color:#00BFFF">🌐 ${callsign}</h4><p style="margin:0 0 5px 0; color:#888; font-size:11px">Online User</p><p style="margin:0 0 5px 0">Aircraft: ${aircraft.atcModel}</p><p style="margin:0 0 5px 0">Speed: ${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0">Altitude: ${Math.round(aircraft.altitude)} ft</p></div>`;
+                    
+                    marker.bindPopup(popupContent);
+                    
+                    marker.on('click', function(e) {
+                        L.DomEvent.stopPropagation(e);
+                        selectedAircraft = { ...aircraft, isOnlineUser: true };
+                        updateOnlineUserDetails(aircraft);
+                        updateMap(lat, lon, heading);
+                        updateNearbyAircraftList();
+                    });
+                    
+                    aircraftMarkers.push(marker);
+                    
+                    if (showAircraftLabels) {
+                        const label = L.divIcon({
+                            html: `<div style="background:rgba(0,191,255,0.8);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">🌐 ${callsign}</div>`,
+                            className: '',
+                            iconSize: [100, 20],
+                            iconAnchor: [50, -10]
+                        });
+                        
+                        const labelMarker = L.marker([aircraft.latitude, aircraft.longitude], { icon: label }).addTo(map);
+                        aircraftMarkers.push(labelMarker);
+                    }
+                });
+            }
             
             aiAircraft.forEach(aircraft => {
                 const isSelected = selectedAircraft && 
@@ -1694,6 +1760,15 @@ userMarker.on('click', function(e) {
                 }
             });
         }
+
+function updateOnlineUserDetails(aircraft) {
+    const detailsPanel = document.getElementById('aircraftDetails');
+    if (!detailsPanel) return;
+    
+    const callsign = aircraft.atcId || "User";
+    
+    detailsPanel.innerHTML = `<h4 style="margin-top:0; color:#00BFFF">🌐 ${callsign}</h4><p style="color:#888; font-size:12px; margin-bottom:10px;">Online User Aircraft</p><p><strong>Aircraft:</strong> ${aircraft.atcModel}</p><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Heading:</span><span class="detail-value">${Math.round(aircraft.heading)}°</span></div>`;
+}
 
 function updateUserAircraftDetails() {
     const detailsPanel = document.getElementById('aircraftDetails');
@@ -1828,6 +1903,39 @@ function updateUserAircraftDetails() {
                 
                 list.appendChild(item);
             });
+        }
+
+function toggleOnlineUsers() {
+            showOnlineUsers = !showOnlineUsers;
+            const btn = document.getElementById('toggleOnlineUsersBtn');
+            
+            if (showOnlineUsers) {
+                btn.textContent = '🌐 Hide Online Users';
+                btn.classList.remove('btn-secondary');
+                btn.classList.add('btn-primary');
+                // Request online aircraft data
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
+                }
+                
+                // Auto-refresh every 5 seconds
+                if (window.onlineUsersInterval) {
+                    clearInterval(window.onlineUsersInterval);
+                }
+                window.onlineUsersInterval = setInterval(() => {
+                    if (ws && ws.readyState === WebSocket.OPEN && showOnlineUsers) {
+                        ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
+                    }
+                }, 5000);
+            } else {
+                btn.textContent = 'Show Online Users';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-secondary');
+                if (window.onlineUsersInterval) {
+                    clearInterval(window.onlineUsersInterval);
+                }
+                updateMap(userLat, userLon, userHeading);
+            }
         }
 
         function toggleAircraftLabels() {
@@ -3127,6 +3235,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
