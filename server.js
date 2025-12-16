@@ -9,8 +9,28 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 
-// Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword }
+// Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData }
 const sessions = new Map();
+
+// Function to get all online aircraft for sharing
+function getOnlineAircraft() {
+  const aircraft = [];
+  sessions.forEach((session, uniqueId) => {
+    if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
+      aircraft.push({
+        uniqueId: uniqueId.substring(0, 8), // Only show partial ID for privacy
+        latitude: session.lastFlightData.latitude,
+        longitude: session.lastFlightData.longitude,
+        heading: session.lastFlightData.heading || 0,
+        altitude: session.lastFlightData.altitude || 0,
+        groundSpeed: session.lastFlightData.groundSpeed || 0,
+        atcId: session.lastFlightData.atcId || 'Unknown',
+        atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft'
+      });
+    }
+  });
+  return aircraft;
+}
 
 app.use(express.static('public'));
 
@@ -117,10 +137,24 @@ else if (data.type === 'request_control') {
   }
 }
       
+else if (data.type === 'position_update') {
+        // Store flight data on server for sharing with other users
+        if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
+          sessions.get(ws.uniqueId).lastFlightData = data.data;
+        }
+      }
+      
+      else if (data.type === 'request_online_aircraft') {
+        // Send list of online aircraft to requesting mobile client
+        ws.send(JSON.stringify({ 
+          type: 'online_aircraft',
+          aircraft: getOnlineAircraft()
+        }));
+      }
+      
       else {
         // Route all other messages
         const session = sessions.get(ws.uniqueId);
-        if (!session) return;
         
         if (ws.clientType === 'mobile' && session.pcClient) {
           // Check if command requires control access
@@ -3093,6 +3127,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
