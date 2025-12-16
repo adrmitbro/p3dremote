@@ -1382,21 +1382,7 @@ case 'ai_traffic':
                 document.getElementById('nav1Active').textContent = '---';
             }
             
-            // ILS Status
-            const ilsStatusEl = document.getElementById('ilsStatus');
-            if (data.nav1HasLocalizer && data.nav1HasGlideSlope) {
-                ilsStatusEl.textContent = 'LOC + G/S';
-                ilsStatusEl.style.color = '#00ff00';
-            } else if (data.nav1HasLocalizer) {
-                ilsStatusEl.textContent = 'LOC Only';
-                ilsStatusEl.style.color = '#ffff00';
-            } else if (data.gpsIsApproachActive) {
-                ilsStatusEl.textContent = 'GPS Approach';
-                ilsStatusEl.style.color = '#167fac';
-            } else {
-                ilsStatusEl.textContent = 'No Signal';
-                ilsStatusEl.style.color = '#888';
-            }
+
 
             // ILS Status
             const ilsStatusEl = document.getElementById('ilsStatus');
@@ -3344,6 +3330,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
