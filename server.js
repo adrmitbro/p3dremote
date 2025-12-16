@@ -407,13 +407,14 @@ function getMobileAppHTML() {
             gap: 8px;
         }
         
-        .map-buttons .btn {
+.map-buttons .btn {
             width: auto;
-            padding: 8px 12px;
-            font-size: 12px;
+            padding: 8px 8px;
+            font-size: 10px;
             margin: 0;
             flex: 1;
-            min-width: 100px;
+            min-width: 0;
+            white-space: nowrap;
         }
         
         .zoom-indicator {
@@ -838,15 +839,14 @@ function getMobileAppHTML() {
 <!-- Map Tab -->
 <div class='map-controls'>
         <div class='map-controls-row'>
-            <div class='map-buttons'>
+<div class='map-buttons'>
                 <button id='followUserBtn' class='btn btn-secondary' onclick='toggleFollowUser()'>Follow Aircraft</button>
                 <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
+                <button id='toggleOnlineUsersBtn' class='btn btn-secondary' onclick='toggleOnlineUsers()'>Show Users</button>
             </div>
             <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
         </div>
-        <div class='map-controls-row'>
-            <button id='toggleOnlineUsersBtn' class='btn btn-secondary' onclick='toggleOnlineUsers()' style='width: 100%;'>Show Online Users</button>
-        </div>
+
     </div>
     
     <div class='map-container'>
@@ -3231,6 +3231,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
