@@ -398,27 +398,22 @@ function getMobileAppHTML() {
             margin-bottom: 8px;
         }
         
-.map-controls-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
+        .map-controls-row:last-child {
+            margin-bottom: 0;
         }
         
         .map-buttons {
             display: flex;
-            gap: 6px;
-            flex: 1;
+            gap: 8px;
         }
         
-.map-buttons .btn {
+        .map-buttons .btn {
             width: auto;
-            padding: 8px 8px;
-            font-size: 10px;
+            padding: 8px 12px;
+            font-size: 12px;
             margin: 0;
             flex: 1;
-            min-width: 0;
-            white-space: nowrap;
+            min-width: 100px;
         }
         
         .zoom-indicator {
@@ -814,36 +809,6 @@ function getMobileAppHTML() {
         <div style='margin-top: 8px; color: #888; font-size: 13px;' id='ete'>Total ETE: --</div>
     </div>
 
-<div class='card'>
-        <div class='data-label'>Approach Information</div>
-        <div id='approachInfo' style='margin-top: 8px;'>
-            <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
-                <div>
-                    <div style='font-size: 11px; color: #888;'>DESTINATION</div>
-                    <div style='font-size: 16px; font-weight: bold; color: #167fac;' id='destAirport'>--</div>
-                </div>
-                <div style='text-align: right;'>
-                    <div style='font-size: 11px; color: #888;'>APPROACH</div>
-                    <div style='font-size: 16px; font-weight: bold; color: #167fac;' id='approachType'>--</div>
-                </div>
-            </div>
-            <div style='display: flex; justify-content: space-between; margin-top: 10px;'>
-                <div>
-                    <div style='font-size: 11px; color: #888;'>NAV1 ACTIVE</div>
-                    <div style='font-size: 14px; font-weight: bold; color: #00ff00;' id='nav1Active'>---</div>
-                </div>
-                <div style='text-align: right;'>
-                    <div style='font-size: 11px; color: #888;'>ILS STATUS</div>
-                    <div style='font-size: 12px; font-weight: bold;' id='ilsStatus'>--</div>
-                </div>
-            </div>
-            <div style='display: flex; gap: 8px; margin-top: 12px;'>
-                <button class='btn btn-primary' style='flex: 1; padding: 10px; margin: 0;' onclick='openApproachMenu()'>Select Approach</button>
-                <button class='btn btn-secondary' style='flex: 1; padding: 10px; margin: 0;' onclick='activateApproach()' id='btnActivateApproach'>Activate</button>
-            </div>
-        </div>
-    </div>
-
     <div class='card'>
         <div class='data-grid'>
             <div class='data-item'>
@@ -873,12 +838,14 @@ function getMobileAppHTML() {
 <!-- Map Tab -->
 <div class='map-controls'>
         <div class='map-controls-row'>
-<div class='map-buttons'>
+            <div class='map-buttons'>
                 <button id='followUserBtn' class='btn btn-secondary' onclick='toggleFollowUser()'>Follow Aircraft</button>
                 <button id='toggleLabelsBtn' class='btn btn-secondary' onclick='toggleAircraftLabels()'>Hide Labels</button>
-                <button id='toggleOnlineUsersBtn' class='btn btn-secondary' onclick='toggleOnlineUsers()'>Show Users</button>
             </div>
             <span id='zoomLevel' class='zoom-indicator'>Zoom: 7</span>
+        </div>
+        <div class='map-controls-row'>
+            <button id='toggleOnlineUsersBtn' class='btn btn-secondary' onclick='toggleOnlineUsers()' style='width: 100%;'>Show Online Users</button>
         </div>
     </div>
     
@@ -1323,22 +1290,6 @@ case 'ai_traffic':
             badge.textContent = status === 'connected' ? 'Connected' : 'Offline';
         }
 
-        function openApproachMenu() {
-            if (!hasControl) {
-                alert('Enter password to access controls');
-                return;
-            }
-            ws.send(JSON.stringify({ type: 'gps_approach_menu' }));
-        }
-
-        function activateApproach() {
-            if (!hasControl) {
-                alert('Enter password to access controls');
-                return;
-            }
-            ws.send(JSON.stringify({ type: 'gps_activate_approach' }));
-        }
-
         function updateFlightData(data) {
             document.getElementById('speed').textContent = Math.round(data.groundSpeed);
             document.getElementById('altitude').textContent = Math.round(data.altitude).toLocaleString();
@@ -1369,57 +1320,6 @@ case 'ai_traffic':
                 document.getElementById('ete').textContent = 'Total ETE: ' + (hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'min');
             } else {
                 document.getElementById('ete').textContent = 'Total ETE: --';
-            }
-
-            // Update approach information
-            document.getElementById('destAirport').textContent = data.gpsApproachAirportId || data.flightPlanDestination || '--';
-            document.getElementById('approachType').textContent = data.gpsApproachId || (data.gpsIsApproachLoaded ? 'Loaded' : 'None');
-            
-            // Format NAV frequency
-            if (data.nav1ActiveFreq && data.nav1ActiveFreq > 0) {
-                document.getElementById('nav1Active').textContent = data.nav1ActiveFreq.toFixed(2);
-            } else {
-                document.getElementById('nav1Active').textContent = '---';
-            }
-            
-
-
-            // ILS Status
-            const ilsStatusEl = document.getElementById('ilsStatus');
-            const activateBtn = document.getElementById('btnActivateApproach');
-            
-            if (data.nav1HasLocalizer && data.nav1HasGlideSlope) {
-                ilsStatusEl.textContent = 'LOC + G/S';
-                ilsStatusEl.style.color = '#00ff00';
-            } else if (data.nav1HasLocalizer) {
-                ilsStatusEl.textContent = 'LOC Only';
-                ilsStatusEl.style.color = '#ffff00';
-            } else if (data.gpsIsApproachActive) {
-                ilsStatusEl.textContent = 'GPS Approach';
-                ilsStatusEl.style.color = '#167fac';
-            } else {
-                ilsStatusEl.textContent = 'No Signal';
-                ilsStatusEl.style.color = '#888';
-            }
-            
-            // Enable/disable activate button
-            if (activateBtn) {
-                if (data.gpsIsApproachLoaded && !data.gpsIsApproachActive) {
-                    activateBtn.disabled = false;
-                    activateBtn.classList.remove('btn-secondary');
-                    activateBtn.classList.add('btn-warning');
-                    activateBtn.style.background = '#ff8800';
-                } else if (data.gpsIsApproachActive) {
-                    activateBtn.disabled = true;
-                    activateBtn.textContent = 'Active';
-                    activateBtn.classList.remove('btn-warning');
-                    activateBtn.classList.add('btn-secondary');
-                } else {
-                    activateBtn.disabled = true;
-                    activateBtn.textContent = 'Activate';
-                    activateBtn.classList.remove('btn-warning');
-                    activateBtn.classList.add('btn-secondary');
-                }
             }
 
             const pauseBadge = document.getElementById('pauseBadge');
@@ -2006,7 +1906,7 @@ function toggleOnlineUsers() {
             const btn = document.getElementById('toggleOnlineUsersBtn');
             
             if (showOnlineUsers) {
-                btn.textContent = 'Hide Users';
+                btn.textContent = '🌐 Hide Online Users';
                 btn.classList.remove('btn-secondary');
                 btn.classList.add('btn-primary');
                 // Request online aircraft data
@@ -2023,8 +1923,8 @@ function toggleOnlineUsers() {
                         ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
                     }
                 }, 5000);
-} else {
-                btn.textContent = 'Online Users';
+            } else {
+                btn.textContent = 'Show Online Users';
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-secondary');
                 if (window.onlineUsersInterval) {
@@ -2034,20 +1934,21 @@ function toggleOnlineUsers() {
             }
         }
 
-function toggleAircraftLabels() {
+        function toggleAircraftLabels() {
             showAircraftLabels = !showAircraftLabels;
-            const btn = document.getElementById('toggleLabelsBtn');
-            btn.textContent = showAircraftLabels ? 'Hide Labels' : 'Labels';
+            document.getElementById('toggleLabelsBtn').textContent = showAircraftLabels ? 'Hide Labels' : 'Show Labels';
             updateMap(userLat, userLon, userHeading);
         }
 
         function toggleFollowUser() {
             followUser = !followUser;
             const btn = document.getElementById('followUserBtn');
-            btn.textContent = followUser ? 'Following' : 'Follow';
             
             if (followUser) {
+                btn.textContent = 'Following';
                 map.setView([userLat, userLon], mapZoom);
+            } else {
+                btn.textContent = 'Follow Aircraft';
             }
         }
 
@@ -3330,10 +3231,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
 
 
 
