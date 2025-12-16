@@ -398,22 +398,27 @@ function getMobileAppHTML() {
             margin-bottom: 8px;
         }
         
-        .map-controls-row:last-child {
-            margin-bottom: 0;
+.map-controls-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
         }
         
         .map-buttons {
             display: flex;
-            gap: 8px;
+            gap: 6px;
+            flex: 1;
         }
         
         .map-buttons .btn {
             width: auto;
-            padding: 8px 12px;
-            font-size: 12px;
+            padding: 8px 10px;
+            font-size: 11px;
             margin: 0;
             flex: 1;
-            min-width: 100px;
+            min-width: 0;
+            white-space: nowrap;
         }
         
         .zoom-indicator {
@@ -1906,7 +1911,7 @@ function toggleOnlineUsers() {
             const btn = document.getElementById('toggleOnlineUsersBtn');
             
             if (showOnlineUsers) {
-                btn.textContent = '🌐 Hide Online Users';
+                btn.textContent = 'Hide Users';
                 btn.classList.remove('btn-secondary');
                 btn.classList.add('btn-primary');
                 // Request online aircraft data
@@ -1923,8 +1928,8 @@ function toggleOnlineUsers() {
                         ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
                     }
                 }, 5000);
-            } else {
-                btn.textContent = 'Show Online Users';
+} else {
+                btn.textContent = 'Online Users';
                 btn.classList.remove('btn-primary');
                 btn.classList.add('btn-secondary');
                 if (window.onlineUsersInterval) {
@@ -1934,21 +1939,20 @@ function toggleOnlineUsers() {
             }
         }
 
-        function toggleAircraftLabels() {
+function toggleAircraftLabels() {
             showAircraftLabels = !showAircraftLabels;
-            document.getElementById('toggleLabelsBtn').textContent = showAircraftLabels ? 'Hide Labels' : 'Show Labels';
+            const btn = document.getElementById('toggleLabelsBtn');
+            btn.textContent = showAircraftLabels ? 'Hide Labels' : 'Labels';
             updateMap(userLat, userLon, userHeading);
         }
 
         function toggleFollowUser() {
             followUser = !followUser;
             const btn = document.getElementById('followUserBtn');
+            btn.textContent = followUser ? 'Following' : 'Follow';
             
             if (followUser) {
-                btn.textContent = 'Following';
                 map.setView([userLat, userLon], mapZoom);
-            } else {
-                btn.textContent = 'Follow Aircraft';
             }
         }
 
@@ -3231,6 +3235,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
