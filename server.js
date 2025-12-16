@@ -1679,8 +1679,7 @@ aircraftMarkers.push(userMarker);
                     
                     const callsign = aircraft.atcId || "User";
                     
-                    const popupContent = `<div style="min-width:200px"><h4 style="margin:0 0 5px 0; color:#00BFFF">🌐 ${callsign}</h4><p style="margin:0 0 5px 0; color:#888; font-size:11px">Online User</p><p style="margin:0 0 5px 0">Aircraft: ${aircraft.atcModel}</p><p style="margin:0 0 5px 0">Speed: ${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0">Altitude: ${Math.round(aircraft.altitude)} ft</p></div>`;
-                    
+const popupContent = \`<div style="min-width:200px"><h4 style="margin:0 0 5px 0; color:#00BFFF">🌐 \${callsign}</h4><p style="margin:0 0 5px 0; color:#888; font-size:11px">Online User</p><p style="margin:0 0 5px 0">Aircraft: \${aircraft.atcModel}</p><p style="margin:0 0 5px 0">Speed: \${Math.round(aircraft.groundSpeed)} kts</p><p style="margin:0">Altitude: \${Math.round(aircraft.altitude)} ft</p></div>\`;                    
                     marker.bindPopup(popupContent);
                     
                     marker.on('click', function(e) {
@@ -1695,7 +1694,7 @@ aircraftMarkers.push(userMarker);
                     
                     if (showAircraftLabels) {
                         const label = L.divIcon({
-                            html: `<div style="background:rgba(0,191,255,0.8);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">🌐 ${callsign}</div>`,
+html: \`<div style="background:rgba(0,191,255,0.8);color:white;padding:2px 5px;border-radius:3px;font-size:11px;white-space:nowrap">🌐 \${callsign}</div>\`,
                             className: '',
                             iconSize: [100, 20],
                             iconAnchor: [50, -10]
@@ -1765,8 +1764,7 @@ function updateOnlineUserDetails(aircraft) {
     
     const callsign = aircraft.atcId || "User";
     
-    detailsPanel.innerHTML = `<h4 style="margin-top:0; color:#00BFFF">🌐 ${callsign}</h4><p style="color:#888; font-size:12px; margin-bottom:10px;">Online User Aircraft</p><p><strong>Aircraft:</strong> ${aircraft.atcModel}</p><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Heading:</span><span class="detail-value">${Math.round(aircraft.heading)}°</span></div>`;
-}
+detailsPanel.innerHTML = \`<h4 style="margin-top:0; color:#00BFFF">🌐 \${callsign}</h4><p style="color:#888; font-size:12px; margin-bottom:10px;">Online User Aircraft</p><p><strong>Aircraft:</strong> \${aircraft.atcModel}</p><div class="detail-row"><span class="detail-label">Speed:</span><span class="detail-value">\${Math.round(aircraft.groundSpeed)} kts</span></div><div class="detail-row"><span class="detail-label">Altitude:</span><span class="detail-value">\${Math.round(aircraft.altitude)} ft</span></div><div class="detail-row"><span class="detail-label">Heading:</span><span class="detail-value">\${Math.round(aircraft.heading)}°</span></div>\`;}
 
 function updateUserAircraftDetails() {
     const detailsPanel = document.getElementById('aircraftDetails');
@@ -3233,6 +3231,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
