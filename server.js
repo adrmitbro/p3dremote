@@ -814,7 +814,7 @@ function getMobileAppHTML() {
         <div style='margin-top: 8px; color: #888; font-size: 13px;' id='ete'>Total ETE: --</div>
     </div>
 
-    <div class='card'>
+<div class='card'>
         <div class='data-label'>Approach Information</div>
         <div id='approachInfo' style='margin-top: 8px;'>
             <div style='display: flex; justify-content: space-between; margin-bottom: 8px;'>
@@ -836,6 +836,10 @@ function getMobileAppHTML() {
                     <div style='font-size: 11px; color: #888;'>ILS STATUS</div>
                     <div style='font-size: 12px; font-weight: bold;' id='ilsStatus'>--</div>
                 </div>
+            </div>
+            <div style='display: flex; gap: 8px; margin-top: 12px;'>
+                <button class='btn btn-primary' style='flex: 1; padding: 10px; margin: 0;' onclick='openApproachMenu()'>Select Approach</button>
+                <button class='btn btn-secondary' style='flex: 1; padding: 10px; margin: 0;' onclick='activateApproach()' id='btnActivateApproach'>Activate</button>
             </div>
         </div>
     </div>
@@ -1319,6 +1323,22 @@ case 'ai_traffic':
             badge.textContent = status === 'connected' ? 'Connected' : 'Offline';
         }
 
+        function openApproachMenu() {
+            if (!hasControl) {
+                alert('Enter password to access controls');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'gps_approach_menu' }));
+        }
+
+        function activateApproach() {
+            if (!hasControl) {
+                alert('Enter password to access controls');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'gps_activate_approach' }));
+        }
+
         function updateFlightData(data) {
             document.getElementById('speed').textContent = Math.round(data.groundSpeed);
             document.getElementById('altitude').textContent = Math.round(data.altitude).toLocaleString();
@@ -1376,6 +1396,44 @@ case 'ai_traffic':
             } else {
                 ilsStatusEl.textContent = 'No Signal';
                 ilsStatusEl.style.color = '#888';
+            }
+
+            // ILS Status
+            const ilsStatusEl = document.getElementById('ilsStatus');
+            const activateBtn = document.getElementById('btnActivateApproach');
+            
+            if (data.nav1HasLocalizer && data.nav1HasGlideSlope) {
+                ilsStatusEl.textContent = 'LOC + G/S';
+                ilsStatusEl.style.color = '#00ff00';
+            } else if (data.nav1HasLocalizer) {
+                ilsStatusEl.textContent = 'LOC Only';
+                ilsStatusEl.style.color = '#ffff00';
+            } else if (data.gpsIsApproachActive) {
+                ilsStatusEl.textContent = 'GPS Approach';
+                ilsStatusEl.style.color = '#167fac';
+            } else {
+                ilsStatusEl.textContent = 'No Signal';
+                ilsStatusEl.style.color = '#888';
+            }
+            
+            // Enable/disable activate button
+            if (activateBtn) {
+                if (data.gpsIsApproachLoaded && !data.gpsIsApproachActive) {
+                    activateBtn.disabled = false;
+                    activateBtn.classList.remove('btn-secondary');
+                    activateBtn.classList.add('btn-warning');
+                    activateBtn.style.background = '#ff8800';
+                } else if (data.gpsIsApproachActive) {
+                    activateBtn.disabled = true;
+                    activateBtn.textContent = 'Active';
+                    activateBtn.classList.remove('btn-warning');
+                    activateBtn.classList.add('btn-secondary');
+                } else {
+                    activateBtn.disabled = true;
+                    activateBtn.textContent = 'Activate';
+                    activateBtn.classList.remove('btn-warning');
+                    activateBtn.classList.add('btn-secondary');
+                }
             }
 
             const pauseBadge = document.getElementById('pauseBadge');
@@ -3286,6 +3344,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
