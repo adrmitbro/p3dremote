@@ -8,6 +8,9 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
+// WebSocket Keep-Alive Configuration
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds (well under Render's 60s timeout)
+const CONNECTION_TIMEOUT = 65000; // 65 seconds
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData }
 const sessions = new Map();
@@ -45,19 +48,72 @@ app.get('/', (req, res) => {
   res.send(getMobileAppHTML());
 });
 
+// Heartbeat mechanism to keep connections alive
+const heartbeat = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log(`Terminating dead connection: ${ws.clientType} - ${ws.uniqueId}`);
+      
+      // Clean up session if PC disconnected
+      if (ws.uniqueId && ws.clientType === 'pc') {
+        const session = sessions.get(ws.uniqueId);
+        if (session) {
+          // Notify mobile clients
+          session.mobileClients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              try {
+                client.send(JSON.stringify({ type: 'pc_offline' }));
+              } catch (e) {}
+            }
+          });
+        }
+      }
+      
+      return ws.terminate();
+    }
+    
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, HEARTBEAT_INTERVAL);
+
+wss.on('close', () => {
+  clearInterval(heartbeat);
+});
+
 wss.on('connection', (ws, req) => {
-  console.log('New connection');
+  console.log('New connection from:', req.socket.remoteAddress);
+  
+  // Initialize heartbeat
+  ws.isAlive = true;
+  ws.lastActivity = Date.now();
+  
+  // Respond to pings
+  ws.on('pong', () => {
+    ws.isAlive = true;
+    ws.lastActivity = Date.now();
+  });
   
   ws.on('message', (message) => {
-    try {
+    ws.isAlive = true;
+    ws.lastActivity = Date.now();
+  
+  ws.on('message', (message) => {
+try {
       const data = JSON.parse(message);
+      
+      // Handle application-level ping if client sends it
+      if (data.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+        return;
+      }
       
 if (data.type === 'register_pc') {
   // PC registering with unique ID
   const uniqueId = data.uniqueId;
   const password = data.password;
   const guestPassword = data.guestPassword;
-  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false; // default to true for backwards compatibility
+  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false;
   
   ws.uniqueId = uniqueId;
   ws.clientType = 'pc';
@@ -70,12 +126,30 @@ if (data.type === 'register_pc') {
       guestPassword: guestPassword,
       isGuestPasswordEnabled: isGuestPasswordEnabled
     });
-} else {
+  } else {
     const session = sessions.get(uniqueId);
+    
+    // Close old PC connection if exists
+    if (session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
+      console.log(`Replacing existing PC connection for ${uniqueId}`);
+      try {
+        session.pcClient.close();
+      } catch (e) {}
+    }
+    
     session.pcClient = ws;
     session.password = password;
     session.guestPassword = guestPassword;
     session.isGuestPasswordEnabled = isGuestPasswordEnabled;
+    
+    // Notify all mobile clients that PC is back online
+    session.mobileClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(JSON.stringify({ type: 'pc_online' }));
+        } catch (e) {}
+      }
+    });
   }
         
         ws.send(JSON.stringify({ type: 'registered', uniqueId }));
@@ -3127,6 +3201,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
