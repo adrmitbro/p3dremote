@@ -94,12 +94,11 @@ wss.on('connection', (ws, req) => {
     ws.lastActivity = Date.now();
   });
   
-  ws.on('message', (message) => {
+ws.on('message', (message) => {
     ws.isAlive = true;
     ws.lastActivity = Date.now();
-  
-  ws.on('message', (message) => {
-try {
+    
+    try {
       const data = JSON.parse(message);
       
       // Handle application-level ping if client sends it
@@ -3201,6 +3200,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
