@@ -345,19 +345,23 @@ function getPublicMapHTML() {
         }
 .header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 12px 15px;
+            padding: 10px 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            gap: 8px;
         }
 
         .header h1 { 
-            font-size: 16px;
+            font-size: 13px;
             font-family: 'Good Times', sans-serif;
             white-space: nowrap;
+            line-height: 1.2;
             flex-shrink: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 .header-right {
             display: flex;
@@ -469,13 +473,20 @@ function getPublicMapHTML() {
             }
         }
 
-        function updateMap() {
+function updateMap() {
             if (!map) return;
 
             document.getElementById('aircraftCount').textContent = 
                 allAircraft.length + ' aircraft online';
 
-            aircraftMarkers.forEach(marker => map.removeLayer(marker));
+            // Store which popup was open
+            let openPopupLatLng = null;
+            aircraftMarkers.forEach(marker => {
+                if (marker.isPopupOpen()) {
+                    openPopupLatLng = marker.getLatLng();
+                }
+                map.removeLayer(marker);
+            });
             aircraftMarkers = [];
 
             allAircraft.forEach(ac => {
@@ -498,6 +509,13 @@ marker.bindPopup(popupContent, {
                     autoClose: false,
                     closeOnClick: false
                 });
+
+                // Reopen popup if it was open before
+                if (openPopupLatLng && 
+                    marker.getLatLng().lat === openPopupLatLng.lat && 
+                    marker.getLatLng().lng === openPopupLatLng.lng) {
+                    marker.openPopup();
+                }
 
                 aircraftMarkers.push(marker);
             });
@@ -3415,6 +3433,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
