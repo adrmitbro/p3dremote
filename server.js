@@ -1841,25 +1841,6 @@ case 'autopilot_state':
             if (map && data.latitude && data.longitude) {
                 updateMap(data.latitude, data.longitude, data.heading);
             }
-                // Check autopause
-    if (autopauseEnabled && data.totalDistance && data.totalDistance > 0) {
-        if (data.totalDistance <= autopauseDistance && !data.isPaused) {
-            // Trigger autopause
-            ws.send(JSON.stringify({ type: 'pause_toggle' }));
-            
-            // Show notification
-            alert('🛬 AUTOPAUSE ACTIVATED!\n\n' +
-                  'Distance: ' + data.totalDistance.toFixed(1) + ' nm\n' +
-                  'Target: ' + autopauseDistance + ' nm\n\n' +
-                  'Simulator paused automatically.');
-            
-            // Disable autopause after triggering
-            autopauseEnabled = false;
-            const btn = document.getElementById('autopauseEnabled');
-            btn.className = 'toggle-btn off';
-            btn.textContent = 'OFF';
-        }
-    }
         }
 
 function updateAutopilotUI(data) {
