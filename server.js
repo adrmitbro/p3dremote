@@ -413,10 +413,11 @@ function getPublicMapHTML() {
     <div id='map'></div>
 
     <script>
-        let map = null;
-        let aircraftMarkers = [];
-        let ws = null;
-        let allAircraft = [];
+let map = null;
+let aircraftMarkers = [];
+let ws = null;
+let allAircraft = [];
+let markerMap = new Map(); // Track markers by uniqueId
 
         function createAircraftIcon(heading) {
             return L.divIcon({
@@ -3433,6 +3434,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
