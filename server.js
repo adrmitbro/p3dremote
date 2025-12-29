@@ -9,8 +9,8 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 // WebSocket Keep-Alive Configuration
-const HEARTBEAT_INTERVAL = 45000; // 30 seconds (well under Render's 60s timeout)
-const CONNECTION_TIMEOUT = 120000; // 65 seconds
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds (well under Render's 60s timeout)
+const CONNECTION_TIMEOUT = 65000; // 65 seconds
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData, isPaused }
 const sessions = new Map();
@@ -461,6 +461,7 @@ let selectedAircraftId = null; // Track which aircraft path is shown
 let autopauseEnabled = false;
 let autopauseDistance = 100;
 
+// Add these functions
 
 function toggleAutopause() {
     autopauseEnabled = !autopauseEnabled;
@@ -3656,8 +3657,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
