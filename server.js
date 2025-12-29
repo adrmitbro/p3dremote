@@ -334,6 +334,7 @@ function getPublicMapHTML() {
     <title>P3D Live Flight Tracker</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link href="https://fonts.cdnfonts.com/css/good-times-2" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
@@ -354,7 +355,7 @@ function getPublicMapHTML() {
 
         .header h1 { 
             font-size: 20px;
-            font-family: Arial, sans-serif;
+            font-family: 'Good Times', sans-serif;
         }
         .header-right {
             display: flex;
@@ -394,7 +395,7 @@ function getPublicMapHTML() {
 </head>
 <body>
     <div class='header'>
-        <h1>🛫 P3D Live Flight Tracker</h1>
+        <h1>P3D Live Flight Tracker</h1>
         <div class='header-right'>
             <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
             <a href='/remote' class='remote-btn'>Remote Control</a>
@@ -487,9 +488,11 @@ function getPublicMapHTML() {
                     </div>
                 \`;
 
-                marker.bindPopup(popupContent);
-                aircraftMarkers.push(marker);
-            });
+marker.bindPopup(popupContent, {
+                    closeButton: true,
+                    autoClose: false,
+                    closeOnClick: false
+                });
         }
 
         window.onload = initMap;
@@ -3404,6 +3407,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
