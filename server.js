@@ -458,6 +458,44 @@ let markerMap = new Map(); // Track markers by uniqueId
 let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
+let autopauseEnabled = false;
+let autopauseDistance = 100;
+
+// Add these functions
+
+function toggleAutopause() {
+    autopauseEnabled = !autopauseEnabled;
+    const btn = document.getElementById('autopauseEnabled');
+    btn.className = 'toggle-btn ' + (autopauseEnabled ? 'on' : 'off');
+    btn.textContent = autopauseEnabled ? 'ON' : 'OFF';
+    
+    const statusDiv = document.getElementById('autopauseStatus');
+    if (autopauseEnabled) {
+        statusDiv.style.display = 'block';
+    } else {
+        statusDiv.style.display = 'none';
+    }
+}
+
+function setAutopauseDistance() {
+    const input = document.getElementById('autopauseDistance');
+    const distance = parseInt(input.value);
+    
+    if (isNaN(distance) || distance <= 0) {
+        alert('Please enter a valid distance');
+        return;
+    }
+    
+    autopauseDistance = distance;
+    document.getElementById('autopauseDistanceDisplay').textContent = distance;
+    
+    if (!document.getElementById('autopauseStatus').style.display || 
+        document.getElementById('autopauseStatus').style.display === 'none') {
+        document.getElementById('autopauseStatus').style.display = 'block';
+    }
+    
+    alert('Autopause distance set to ' + distance + ' nm');
+}
 
         function createAircraftIcon(heading) {
             return L.divIcon({
@@ -3600,6 +3638,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
