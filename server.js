@@ -359,7 +359,7 @@ function getPublicMapHTML() {
         }
 .header-right {
             display: flex;
-            flex-direction: column;
+            flex-direction: row;
             gap: 8px;
             align-items: flex-end;
         }
@@ -3412,6 +3412,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
