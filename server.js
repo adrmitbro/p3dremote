@@ -360,6 +360,7 @@ ws.on('close', () => {
       }
     }
   });
+});
 
 function getPublicMapHTML() {
   return `<!DOCTYPE html>
@@ -559,9 +560,9 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
             marker.setIcon(createAircraftIcon(ac.heading));
             
             // Update popup content without closing it
-const popupContent = \`
+            const popupContent = \`
                 <div style="min-width:200px">
-                    <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+                    <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
                     <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
                     <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
                     <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
@@ -575,9 +576,9 @@ const popupContent = \`
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-            const popupContent = \`
+const popupContent = \`
                 <div style="min-width:200px">
-                    <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                    <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
                     <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
                     <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
                     <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
@@ -3576,11 +3577,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-});
-
-
-
-
 
 
 
