@@ -317,16 +317,12 @@ else if (data.type === 'position_update') {
     }
   });
 
-ws.on('close', () => {
+  ws.on('close', () => {
     if (ws.uniqueId && sessions.has(ws.uniqueId)) {
       const session = sessions.get(ws.uniqueId);
       
       if (ws.clientType === 'pc') {
         console.log(`PC disconnected: ${ws.uniqueId}`);
-        
-        // Clear flight data and path when PC disconnects
-        session.lastFlightData = null;
-        session.flightPath = [];
         session.pcClient = null;
         
         // Notify mobile clients
@@ -335,25 +331,14 @@ ws.on('close', () => {
             client.send(JSON.stringify({ type: 'pc_offline' }));
           }
         });
-        
-        // Clean up the session if no mobile clients remain
-        if (session.mobileClients.size === 0) {
-          sessions.delete(ws.uniqueId);
-          console.log(`Session cleaned up: ${ws.uniqueId}`);
-        }
       }
       else if (ws.clientType === 'mobile') {
         session.mobileClients.delete(ws);
         console.log(`Mobile disconnected from: ${ws.uniqueId}`);
-        
-        // Clean up the session if PC is disconnected and no mobile clients remain
-        if (!session.pcClient && session.mobileClients.size === 0) {
-          sessions.delete(ws.uniqueId);
-          console.log(`Session cleaned up: ${ws.uniqueId}`);
-        }
       }
     }
   });
+});
 
 function getPublicMapHTML() {
   return `<!DOCTYPE html>
@@ -3570,8 +3555,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
