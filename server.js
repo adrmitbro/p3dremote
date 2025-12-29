@@ -214,7 +214,7 @@ else if (data.type === 'request_control') {
   }
 }
       
-else if (data.type === 'position_update') {
+else if (data.type === 'position_update' || data.type === 'flight_data') {
         // Store flight data on server for sharing with other users
         if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
           sessions.get(ws.uniqueId).lastFlightData = data.data;
@@ -3385,6 +3385,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
