@@ -1577,7 +1577,6 @@ function getMobileAppHTML() {
             </div>
         </div>
         
-        // Add a new card for Autopause settings
 <div class='card'>
     <h3>Auto-Pause</h3>
     <div class='info-box' style='font-size: 12px;'>
@@ -3601,6 +3600,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
