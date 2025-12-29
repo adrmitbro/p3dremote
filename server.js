@@ -44,7 +44,13 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Public map at root
 app.get('/', (req, res) => {
+  res.send(getPublicMapHTML());
+});
+
+// Remote control at /remote
+app.get('/remote', (req, res) => {
   res.send(getMobileAppHTML());
 });
 
@@ -209,6 +215,24 @@ else if (data.type === 'request_control') {
     ws.send(JSON.stringify({ type: 'auth_failed' }));
   }
 }
+
+  else if (data.type === 'flight_data') {
+  // Store flight data from PC for public map
+  if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
+    const session = sessions.get(ws.uniqueId);
+    session.lastFlightData = data.data;
+  }
+  
+  // Forward to mobile clients
+  const session = sessions.get(ws.uniqueId);
+  if (session) {
+    session.mobileClients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(data));
+      }
+    });
+  }
+}
       
 else if (data.type === 'position_update') {
         // Store flight data on server for sharing with other users
@@ -294,6 +318,179 @@ else if (data.type === 'position_update') {
     }
   });
 });
+
+function getPublicMapHTML() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>P3D Live Flight Tracker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #000;
+            color: white;
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            padding: 15px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #167fac;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 { 
+            font-size: 20px;
+            font-family: Arial, sans-serif;
+        }
+        .header-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .aircraft-count {
+            background: #167fac;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .remote-btn {
+            background: #2d2d2d;
+            border: 1px solid #167fac;
+            color: #167fac;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .remote-btn:hover {
+            background: #167fac;
+            color: white;
+        }
+        #map {
+            height: calc(100vh - 70px);
+        }
+        .user-aircraft {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+        }
+    </style>
+</head>
+<body>
+    <div class='header'>
+        <h1>🛫 P3D Live Flight Tracker</h1>
+        <div class='header-right'>
+            <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
+            <a href='/remote' class='remote-btn'>Remote Control</a>
+        </div>
+    </div>
+    <div id='map'></div>
+
+    <script>
+        let map = null;
+        let aircraftMarkers = [];
+        let ws = null;
+        let allAircraft = [];
+
+        function createAircraftIcon(heading) {
+            return L.divIcon({
+                html: \`<div class="user-aircraft" style="transform: rotate(\${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
+
+        function initMap() {
+            map = L.map('map', {
+                center: [0, 0],
+                zoom: 2,
+                zoomControl: true
+            });
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap contributors',
+                maxZoom: 18
+            }).addTo(map);
+
+            L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+            connectWebSocket();
+            setInterval(requestAircraft, 1000);
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(protocol + '//' + window.location.host);
+            
+            ws.onopen = () => {
+                console.log('Connected');
+                requestAircraft();
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type === 'online_aircraft') {
+                    allAircraft = data.aircraft;
+                    updateMap();
+                }
+            };
+
+            ws.onclose = () => {
+                setTimeout(connectWebSocket, 3000);
+            };
+        }
+
+        function requestAircraft() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
+            }
+        }
+
+        function updateMap() {
+            if (!map) return;
+
+            document.getElementById('aircraftCount').textContent = 
+                allAircraft.length + ' aircraft online';
+
+            aircraftMarkers.forEach(marker => map.removeLayer(marker));
+            aircraftMarkers = [];
+
+            allAircraft.forEach(ac => {
+                const marker = L.marker([ac.latitude, ac.longitude], { 
+                    icon: createAircraftIcon(ac.heading)
+                }).addTo(map);
+
+                const popupContent = \`
+                    <div style="min-width:200px">
+                        <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+                        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+                        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+                        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+                    </div>
+                \`;
+
+                marker.bindPopup(popupContent);
+                aircraftMarkers.push(marker);
+            });
+        }
+
+        window.onload = initMap;
+    </script>
+</body>
+</html>`;
+}
 
 function getMobileAppHTML() {
   return `<!DOCTYPE html>
@@ -839,8 +1036,9 @@ function getMobileAppHTML() {
     </style>
 </head>
 <body>
-    <div class='header'>
+<div class='header'>
         <h1>Prepar3D Remote</h1>
+        <a href='/' style='background: #2d2d2d; border: 1px solid #167fac; color: #167fac; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;'>← Public Map</a>
         <div id='statusBadge' class='status offline'>Offline</div>
         <div id='pauseBadge' class='status paused'>Paused</div>
     </div>
@@ -3200,6 +3398,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
