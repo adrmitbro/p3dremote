@@ -480,45 +480,66 @@ function updateMap() {
             document.getElementById('aircraftCount').textContent = 
                 allAircraft.length + ' aircraft online';
 
-            // Store which popup was open
-            let openPopupLatLng = null;
-            aircraftMarkers.forEach(marker => {
-                if (marker.isPopupOpen()) {
-                    openPopupLatLng = marker.getLatLng();
-                }
-                map.removeLayer(marker);
-            });
-            aircraftMarkers = [];
+            // Track which aircraft IDs are currently active
+            const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
 
             allAircraft.forEach(ac => {
-                const marker = L.marker([ac.latitude, ac.longitude], { 
-                    icon: createAircraftIcon(ac.heading)
-                }).addTo(map);
+                const uniqueId = ac.uniqueId;
 
-                const popupContent = \`
-                    <div style="min-width:200px">
-                        <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
-                        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-                        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-                        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-                        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-                    </div>
-                \`;
+                if (markerMap.has(uniqueId)) {
+                    // Update existing marker
+                    const marker = markerMap.get(uniqueId);
+                    marker.setLatLng([ac.latitude, ac.longitude]);
+                    marker.setIcon(createAircraftIcon(ac.heading));
+                    
+                    // Update popup content without closing it
+                    const popupContent = \`
+                        <div style="min-width:200px">
+                            <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                            <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+                            <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+                            <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+                            <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+                        </div>
+                    \`;
+                    marker.getPopup().setContent(popupContent);
+                } else {
+                    // Create new marker
+                    const marker = L.marker([ac.latitude, ac.longitude], { 
+                        icon: createAircraftIcon(ac.heading)
+                    }).addTo(map);
 
-marker.bindPopup(popupContent, {
-                    closeButton: true,
-                    autoClose: false,
-                    closeOnClick: false
-                });
+                    const popupContent = \`
+                        <div style="min-width:200px">
+                            <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                            <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+                            <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+                            <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+                            <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+                        </div>
+                    \`;
 
-                // Reopen popup if it was open before
-                if (openPopupLatLng && 
-                    marker.getLatLng().lat === openPopupLatLng.lat && 
-                    marker.getLatLng().lng === openPopupLatLng.lng) {
-                    marker.openPopup();
+                    marker.bindPopup(popupContent, {
+                        closeButton: true,
+                        autoClose: false,
+                        closeOnClick: false
+                    });
+
+                    markerMap.set(uniqueId, marker);
+                    aircraftMarkers.push(marker);
                 }
+            });
 
-                aircraftMarkers.push(marker);
+            // Remove markers for aircraft that are no longer active
+            markerMap.forEach((marker, uniqueId) => {
+                if (!activeIds.has(uniqueId)) {
+                    map.removeLayer(marker);
+                    markerMap.delete(uniqueId);
+                    const index = aircraftMarkers.indexOf(marker);
+                    if (index > -1) {
+                        aircraftMarkers.splice(index, 1);
+                    }
+                }
             });
         }
 
@@ -3434,6 +3455,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
