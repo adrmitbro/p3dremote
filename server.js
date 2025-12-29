@@ -30,7 +30,8 @@ function getOnlineAircraft() {
         altitude: session.lastFlightData.altitude || 0,
         groundSpeed: session.lastFlightData.groundSpeed || 0,
         atcId: session.lastFlightData.atcId || 'Unknown',
-        atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft'
+        atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft',
+        flightPath: session.flightPath || [] // Include flight path
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -127,13 +128,14 @@ if (data.type === 'register_pc') {
   ws.uniqueId = uniqueId;
   ws.clientType = 'pc';
   
-  if (!sessions.has(uniqueId)) {
+if (!sessions.has(uniqueId)) {
     sessions.set(uniqueId, {
       pcClient: ws,
       mobileClients: new Set(),
       password: password,
       guestPassword: guestPassword,
-      isGuestPasswordEnabled: isGuestPasswordEnabled
+      isGuestPasswordEnabled: isGuestPasswordEnabled,
+      flightPath: [] // Store flight path on server
     });
   } else {
     const session = sessions.get(uniqueId);
@@ -220,13 +222,26 @@ else if (data.type === 'request_control') {
   }
 }
 
-  else if (data.type === 'flight_data') {
+else if (data.type === 'flight_data') {
       console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
   console.log('Flight data:', data.data ? 'Has data' : 'No data');
   // Store flight data from PC for public map
   if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
     const session = sessions.get(ws.uniqueId);
     session.lastFlightData = data.data;
+    
+    // Store position in flight path
+    if (!session.flightPath) {
+      session.flightPath = [];
+    }
+    const lat = data.data.latitude;
+    const lon = data.data.longitude;
+    if (lat && lon) {
+      const lastPos = session.flightPath.length > 0 ? session.flightPath[session.flightPath.length - 1] : null;
+      if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
+        session.flightPath.push([lat, lon]);
+      }
+    }
   }
   
   // Forward to mobile clients
@@ -422,14 +437,14 @@ let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
 
-function createAircraftIcon(heading) {
-    return L.divIcon({
-        html: `<div class="user-aircraft" style="transform: rotate(${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>`,
-        className: '',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-    });
-}
+        function createAircraftIcon(heading) {
+            return L.divIcon({
+                html: \`<div class="user-aircraft" style="transform: rotate(\${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
 
 function initMap() {
     map = L.map('map', {
@@ -503,17 +518,18 @@ function updateMap() {
     allAircraft.forEach(ac => {
         const uniqueId = ac.uniqueId;
 
-        // Store position in flight path
-        if (!flightPaths.has(uniqueId)) {
-            flightPaths.set(uniqueId, []);
-        }
-        const path = flightPaths.get(uniqueId);
-        
-        // Only add if position has changed (avoid duplicates)
-        const lastPos = path.length > 0 ? path[path.length - 1] : null;
-        if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
-            path.push([ac.latitude, ac.longitude]);
-        }
+// Store position in flight path
+if (!flightPaths.has(uniqueId)) {
+    // Initialize with server's flight path if available
+    flightPaths.set(uniqueId, ac.flightPath || []);
+}
+const path = flightPaths.get(uniqueId);
+
+// Only add if position has changed (avoid duplicates)
+const lastPos = path.length > 0 ? path[path.length - 1] : null;
+if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+    path.push([ac.latitude, ac.longitude]);
+}
 
         if (markerMap.has(uniqueId)) {
             // Update existing marker
@@ -3539,8 +3555,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
