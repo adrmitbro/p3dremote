@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3000;
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds (well under Render's 60s timeout)
 const CONNECTION_TIMEOUT = 65000; // 65 seconds
 
-// Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData }
+// Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData, isPaused }
 const sessions = new Map();
 
 // Function to get all online aircraft for sharing
@@ -31,7 +31,8 @@ function getOnlineAircraft() {
         groundSpeed: session.lastFlightData.groundSpeed || 0,
         atcId: session.lastFlightData.atcId || 'Unknown',
         atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft',
-        flightPath: session.flightPath || [] // Include flight path
+        flightPath: session.flightPath || [], // Include flight path
+        isPaused: session.isPaused || false // Include pause state
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -69,6 +70,10 @@ const heartbeat = setInterval(() => {
       if (ws.uniqueId && ws.clientType === 'pc') {
         const session = sessions.get(ws.uniqueId);
         if (session) {
+          // Clear flight data so aircraft disappears from public map
+          session.lastFlightData = null;
+          session.flightPath = [];
+          
           // Notify mobile clients
           session.mobileClients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
@@ -229,6 +234,7 @@ else if (data.type === 'flight_data') {
   if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
     const session = sessions.get(ws.uniqueId);
     session.lastFlightData = data.data;
+    session.isPaused = data.data.isPaused || false; // Store pause state
     
     // Store position in flight path
     if (!session.flightPath) {
@@ -317,12 +323,16 @@ else if (data.type === 'position_update') {
     }
   });
 
-  ws.on('close', () => {
+ws.on('close', () => {
     if (ws.uniqueId && sessions.has(ws.uniqueId)) {
       const session = sessions.get(ws.uniqueId);
       
       if (ws.clientType === 'pc') {
         console.log(`PC disconnected: ${ws.uniqueId}`);
+        
+        // Clear flight data so aircraft disappears from public map
+        session.lastFlightData = null;
+        session.flightPath = [];
         session.pcClient = null;
         
         // Notify mobile clients
@@ -331,14 +341,25 @@ else if (data.type === 'position_update') {
             client.send(JSON.stringify({ type: 'pc_offline' }));
           }
         });
+        
+        // Optional: Remove session entirely if no mobile clients are connected
+        if (session.mobileClients.size === 0) {
+          sessions.delete(ws.uniqueId);
+          console.log(`Session removed: ${ws.uniqueId}`);
+        }
       }
       else if (ws.clientType === 'mobile') {
         session.mobileClients.delete(ws);
         console.log(`Mobile disconnected from: ${ws.uniqueId}`);
+        
+        // Optional: Clean up session if PC is offline and no mobile clients remain
+        if (!session.pcClient && session.mobileClients.size === 0) {
+          sessions.delete(ws.uniqueId);
+          console.log(`Session removed: ${ws.uniqueId}`);
+        }
       }
     }
   });
-});
 
 function getPublicMapHTML() {
   return `<!DOCTYPE html>
@@ -538,9 +559,9 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
             marker.setIcon(createAircraftIcon(ac.heading));
             
             // Update popup content without closing it
-            const popupContent = \`
+const popupContent = \`
                 <div style="min-width:200px">
-                    <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                    <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
                     <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
                     <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
                     <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
@@ -3555,6 +3576,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
