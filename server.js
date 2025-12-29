@@ -458,6 +458,44 @@ let markerMap = new Map(); // Track markers by uniqueId
 let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
+let autopauseEnabled = false;
+let autopauseDistance = 100;
+
+// Add these functions
+
+function toggleAutopause() {
+    autopauseEnabled = !autopauseEnabled;
+    const btn = document.getElementById('autopauseEnabled');
+    btn.className = 'toggle-btn ' + (autopauseEnabled ? 'on' : 'off');
+    btn.textContent = autopauseEnabled ? 'ON' : 'OFF';
+    
+    const statusDiv = document.getElementById('autopauseStatus');
+    if (autopauseEnabled) {
+        statusDiv.style.display = 'block';
+    } else {
+        statusDiv.style.display = 'none';
+    }
+}
+
+function setAutopauseDistance() {
+    const input = document.getElementById('autopauseDistance');
+    const distance = parseInt(input.value);
+    
+    if (isNaN(distance) || distance <= 0) {
+        alert('Please enter a valid distance');
+        return;
+    }
+    
+    autopauseDistance = distance;
+    document.getElementById('autopauseDistanceDisplay').textContent = distance;
+    
+    if (!document.getElementById('autopauseStatus').style.display || 
+        document.getElementById('autopauseStatus').style.display === 'none') {
+        document.getElementById('autopauseStatus').style.display = 'block';
+    }
+    
+    alert('Autopause distance set to ' + distance + ' nm');
+}
 
         function createAircraftIcon(heading) {
             return L.divIcon({
@@ -1803,6 +1841,30 @@ case 'autopilot_state':
             if (map && data.latitude && data.longitude) {
                 updateMap(data.latitude, data.longitude, data.heading);
             }
+            function updateFlightData(data) {
+    // ... existing code ...
+    
+    // ADD THIS AT THE END OF updateFlightData function:
+    
+    // Check autopause
+    if (autopauseEnabled && data.totalDistance && data.totalDistance > 0) {
+        if (data.totalDistance <= autopauseDistance && !data.isPaused) {
+            // Trigger autopause
+            ws.send(JSON.stringify({ type: 'pause_toggle' }));
+            
+            // Show notification
+            alert('🛬 AUTOPAUSE ACTIVATED!\n\n' +
+                  'Distance: ' + data.totalDistance.toFixed(1) + ' nm\n' +
+                  'Target: ' + autopauseDistance + ' nm\n\n' +
+                  'Simulator paused automatically.');
+            
+            // Disable autopause after triggering
+            autopauseEnabled = false;
+            const btn = document.getElementById('autopauseEnabled');
+            btn.className = 'toggle-btn off';
+            btn.textContent = 'OFF';
+        }
+    }
         }
 
 function updateAutopilotUI(data) {
@@ -3600,6 +3662,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
