@@ -18,10 +18,12 @@ const sessions = new Map();
 // Function to get all online aircraft for sharing
 function getOnlineAircraft() {
   const aircraft = [];
+  console.log('Getting online aircraft, total sessions:', sessions.size);
   sessions.forEach((session, uniqueId) => {
+    console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
       aircraft.push({
-        uniqueId: uniqueId.substring(0, 8), // Only show partial ID for privacy
+        uniqueId: uniqueId.substring(0, 8),
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
         heading: session.lastFlightData.heading || 0,
@@ -30,8 +32,10 @@ function getOnlineAircraft() {
         atcId: session.lastFlightData.atcId || 'Unknown',
         atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft'
       });
+      console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
   });
+  console.log('Total aircraft to send:', aircraft.length);
   return aircraft;
 }
 
@@ -217,6 +221,8 @@ else if (data.type === 'request_control') {
 }
 
   else if (data.type === 'flight_data') {
+      console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
+  console.log('Flight data:', data.data ? 'Has data' : 'No data');
   // Store flight data from PC for public map
   if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
     const session = sessions.get(ws.uniqueId);
@@ -3398,6 +3404,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
