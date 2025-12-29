@@ -422,14 +422,14 @@ let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
 
-        function createAircraftIcon(heading) {
-            return L.divIcon({
-                html: \`<div class="user-aircraft" style="transform: rotate(\${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>\`,
-                className: '',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
-            });
-        }
+function createAircraftIcon(heading) {
+    return L.divIcon({
+        html: `<div class="user-aircraft" style="transform: rotate(${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>`,
+        className: '',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+    });
+}
 
 function initMap() {
     map = L.map('map', {
@@ -3539,6 +3539,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
