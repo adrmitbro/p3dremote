@@ -343,9 +343,9 @@ function getPublicMapHTML() {
             color: white;
             overflow: hidden;
         }
-        .header {
+.header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 15px 20px;
+            padding: 12px 15px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
             display: flex;
@@ -354,8 +354,10 @@ function getPublicMapHTML() {
         }
 
         .header h1 { 
-            font-size: 20px;
+            font-size: 16px;
             font-family: 'Good Times', sans-serif;
+            white-space: nowrap;
+            flex-shrink: 1;
         }
 .header-right {
             display: flex;
@@ -3413,6 +3415,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
