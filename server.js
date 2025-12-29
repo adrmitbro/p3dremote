@@ -418,6 +418,9 @@ let aircraftMarkers = [];
 let ws = null;
 let allAircraft = [];
 let markerMap = new Map(); // Track markers by uniqueId
+let flightPaths = new Map(); // Track flight paths by uniqueId
+let pathLines = new Map(); // Track polylines by uniqueId
+let selectedAircraftId = null; // Track which aircraft path is shown
 
         function createAircraftIcon(heading) {
             return L.divIcon({
@@ -428,23 +431,37 @@ let markerMap = new Map(); // Track markers by uniqueId
             });
         }
 
-        function initMap() {
-            map = L.map('map', {
-                center: [0, 0],
-                zoom: 2,
-                zoomControl: true
-            });
-            
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap contributors',
-                maxZoom: 18
-            }).addTo(map);
+function initMap() {
+    map = L.map('map', {
+        center: [0, 0],
+        zoom: 2,
+        zoomControl: true
+    });
+    
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(map);
 
-            L.control.zoom({ position: 'bottomright' }).addTo(map);
+    L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-            connectWebSocket();
-            setInterval(requestAircraft, 1000);
+    connectWebSocket();
+    setInterval(requestAircraft, 1000);
+
+    // Hide flight path when clicking on empty map area
+    map.on('click', function(e) {
+        if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
+            return;
         }
+        
+        // Hide any visible flight path
+        if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
+            map.removeLayer(pathLines.get(selectedAircraftId));
+            pathLines.delete(selectedAircraftId);
+            selectedAircraftId = null;
+        }
+    });
+}
 
         function connectWebSocket() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -475,73 +492,140 @@ let markerMap = new Map(); // Track markers by uniqueId
         }
 
 function updateMap() {
-            if (!map) return;
+    if (!map) return;
 
-            document.getElementById('aircraftCount').textContent = 
-                allAircraft.length + ' aircraft online';
+    document.getElementById('aircraftCount').textContent = 
+        allAircraft.length + ' aircraft online';
 
-            // Track which aircraft IDs are currently active
-            const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
+    // Track which aircraft IDs are currently active
+    const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
 
-            allAircraft.forEach(ac => {
-                const uniqueId = ac.uniqueId;
+    allAircraft.forEach(ac => {
+        const uniqueId = ac.uniqueId;
 
-                if (markerMap.has(uniqueId)) {
-                    // Update existing marker
-                    const marker = markerMap.get(uniqueId);
-                    marker.setLatLng([ac.latitude, ac.longitude]);
-                    marker.setIcon(createAircraftIcon(ac.heading));
-                    
-                    // Update popup content without closing it
-                    const popupContent = \`
-                        <div style="min-width:200px">
-                            <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
-                            <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-                            <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-                            <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-                            <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-                        </div>
-                    \`;
-                    marker.getPopup().setContent(popupContent);
-                } else {
-                    // Create new marker
-                    const marker = L.marker([ac.latitude, ac.longitude], { 
-                        icon: createAircraftIcon(ac.heading)
-                    }).addTo(map);
-
-                    const popupContent = \`
-                        <div style="min-width:200px">
-                            <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
-                            <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-                            <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-                            <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-                            <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-                        </div>
-                    \`;
-
-                    marker.bindPopup(popupContent, {
-                        closeButton: true,
-                        autoClose: false,
-                        closeOnClick: false
-                    });
-
-                    markerMap.set(uniqueId, marker);
-                    aircraftMarkers.push(marker);
-                }
-            });
-
-            // Remove markers for aircraft that are no longer active
-            markerMap.forEach((marker, uniqueId) => {
-                if (!activeIds.has(uniqueId)) {
-                    map.removeLayer(marker);
-                    markerMap.delete(uniqueId);
-                    const index = aircraftMarkers.indexOf(marker);
-                    if (index > -1) {
-                        aircraftMarkers.splice(index, 1);
-                    }
-                }
-            });
+        // Store position in flight path
+        if (!flightPaths.has(uniqueId)) {
+            flightPaths.set(uniqueId, []);
         }
+        const path = flightPaths.get(uniqueId);
+        
+        // Only add if position has changed (avoid duplicates)
+        const lastPos = path.length > 0 ? path[path.length - 1] : null;
+        if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+            path.push([ac.latitude, ac.longitude]);
+        }
+
+        if (markerMap.has(uniqueId)) {
+            // Update existing marker
+            const marker = markerMap.get(uniqueId);
+            marker.setLatLng([ac.latitude, ac.longitude]);
+            marker.setIcon(createAircraftIcon(ac.heading));
+            
+            // Update popup content without closing it
+            const popupContent = \`
+                <div style="min-width:200px">
+                    <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                    <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+                    <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+                    <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+                    <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+                </div>
+            \`;
+            marker.getPopup().setContent(popupContent);
+        } else {
+            // Create new marker
+            const marker = L.marker([ac.latitude, ac.longitude], { 
+                icon: createAircraftIcon(ac.heading)
+            }).addTo(map);
+
+            const popupContent = \`
+                <div style="min-width:200px">
+                    <h4 style="margin:0 0 5px 0">\${ac.atcId}</h4>
+                    <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+                    <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+                    <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+                    <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+                </div>
+            \`;
+
+            marker.bindPopup(popupContent, {
+                closeButton: true,
+                autoClose: false,
+                closeOnClick: false
+            });
+
+            // Add click handler to show flight path
+            marker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                toggleFlightPath(uniqueId);
+            });
+
+            markerMap.set(uniqueId, marker);
+            aircraftMarkers.push(marker);
+        }
+
+        // Update flight path line if this aircraft is selected
+        if (selectedAircraftId === uniqueId) {
+            updateFlightPathLine(uniqueId);
+        }
+    });
+
+    // Remove markers for aircraft that are no longer active
+    markerMap.forEach((marker, uniqueId) => {
+        if (!activeIds.has(uniqueId)) {
+            map.removeLayer(marker);
+            markerMap.delete(uniqueId);
+            flightPaths.delete(uniqueId);
+            
+            // Remove flight path line if exists
+            if (pathLines.has(uniqueId)) {
+                map.removeLayer(pathLines.get(uniqueId));
+                pathLines.delete(uniqueId);
+            }
+            
+            if (selectedAircraftId === uniqueId) {
+                selectedAircraftId = null;
+            }
+            
+            const index = aircraftMarkers.indexOf(marker);
+            if (index > -1) {
+                aircraftMarkers.splice(index, 1);
+            }
+        }
+    });
+}
+
+function toggleFlightPath(uniqueId) {
+    // Hide previous path if any
+    if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
+        map.removeLayer(pathLines.get(selectedAircraftId));
+        pathLines.delete(selectedAircraftId);
+    }
+    
+    // Show new path
+    selectedAircraftId = uniqueId;
+    updateFlightPathLine(uniqueId);
+}
+
+function updateFlightPathLine(uniqueId) {
+    const path = flightPaths.get(uniqueId);
+    if (!path || path.length < 2) return;
+
+    // Remove old line
+    if (pathLines.has(uniqueId)) {
+        map.removeLayer(pathLines.get(uniqueId));
+    }
+
+    // Create new line
+    const polyline = L.polyline(path, {
+        color: '#00ff00',
+        weight: 3,
+        opacity: 0.7,
+        smoothFactor: 1
+    }).addTo(map);
+
+    pathLines.set(uniqueId, polyline);
+}
 
         window.onload = initMap;
     </script>
