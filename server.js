@@ -1556,6 +1556,7 @@ function getMobileAppHTML() {
                 <button class='toggle-btn off' id='lightRecognition' onclick='toggleLight("recognition")'>OFF</button>
             </div>
         </div>
+
         
         <div class='card'>
             <h3>Cabin & Interior</h3>
@@ -1575,6 +1576,29 @@ function getMobileAppHTML() {
                 <button class='toggle-btn off' id='seatbeltsSwitch' onclick='toggleCabin("seatbelts")'>OFF</button>
             </div>
         </div>
+        
+        // Add a new card for Autopause settings
+<div class='card'>
+    <h3>Auto-Pause</h3>
+    <div class='info-box' style='font-size: 12px;'>
+        ⏸️ Automatically pause when approaching destination
+    </div>
+    
+    <div class='control-row'>
+        <span class='control-label'>Auto-Pause</span>
+        <button class='toggle-btn off' id='autopauseEnabled' onclick='toggleAutopause()'>OFF</button>
+    </div>
+    
+    <div class='input-group'>
+        <input type='number' id='autopauseDistance' placeholder='Distance (nm)' value='100'>
+        <button class='btn btn-primary' onclick='setAutopauseDistance()'>Set Distance</button>
+    </div>
+    
+    <div id='autopauseStatus' style='display:none; margin-top:10px; padding:8px; background:#2d2d2d; border-radius:6px; font-size:11px; color:#888;'>
+        Will pause at <span id='autopauseDistanceDisplay'>100</span> nm
+    </div>
+</div>
+
     </div>
 </div>
     </div>
@@ -3577,6 +3601,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
