@@ -1669,9 +1669,6 @@ function switchTab(index) {
             }
         }
 
-let ws = null;
-let pingInterval = null; // Add this at the top with other variables (around line 1630)
-
 function connectToSim() {
     uniqueId = document.getElementById('uniqueId').value.trim();
     if (!uniqueId) {
@@ -3675,6 +3672,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
