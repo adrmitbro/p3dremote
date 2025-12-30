@@ -1604,6 +1604,7 @@ function getMobileAppHTML() {
 
     <script>
         let ws = null;
+        let pingInterval = null; // ← ADD THIS LINE
         let map = null;
         let aircraftMarkers = [];
         let aiAircraft = [];
@@ -3654,6 +3655,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
