@@ -110,6 +110,7 @@ wss.on('connection', (ws, req) => {
     ws.lastActivity = Date.now();
   });
   
+// Replace the message handling section starting around line 175
 ws.on('message', (message) => {
     ws.isAlive = true;
     ws.lastActivity = Date.now();
@@ -123,50 +124,50 @@ ws.on('message', (message) => {
         return;
       }
       
-if (data.type === 'register_pc') {
-  // PC registering with unique ID
-  const uniqueId = data.uniqueId;
-  const password = data.password;
-  const guestPassword = data.guestPassword;
-  const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false;
-  
-  ws.uniqueId = uniqueId;
-  ws.clientType = 'pc';
-  
-if (!sessions.has(uniqueId)) {
-    sessions.set(uniqueId, {
-      pcClient: ws,
-      mobileClients: new Set(),
-      password: password,
-      guestPassword: guestPassword,
-      isGuestPasswordEnabled: isGuestPasswordEnabled,
-      flightPath: [] // Store flight path on server
-    });
-  } else {
-    const session = sessions.get(uniqueId);
-    
-    // Close old PC connection if exists
-    if (session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
-      console.log(`Replacing existing PC connection for ${uniqueId}`);
-      try {
-        session.pcClient.close();
-      } catch (e) {}
-    }
-    
-    session.pcClient = ws;
-    session.password = password;
-    session.guestPassword = guestPassword;
-    session.isGuestPasswordEnabled = isGuestPasswordEnabled;
-    
-    // Notify all mobile clients that PC is back online
-    session.mobileClients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(JSON.stringify({ type: 'pc_online' }));
-        } catch (e) {}
-      }
-    });
-  }
+      if (data.type === 'register_pc') {
+        // PC registering with unique ID
+        const uniqueId = data.uniqueId;
+        const password = data.password;
+        const guestPassword = data.guestPassword;
+        const isGuestPasswordEnabled = data.isGuestPasswordEnabled !== false;
+        
+        ws.uniqueId = uniqueId;
+        ws.clientType = 'pc';
+        
+        if (!sessions.has(uniqueId)) {
+          sessions.set(uniqueId, {
+            pcClient: ws,
+            mobileClients: new Set(),
+            password: password,
+            guestPassword: guestPassword,
+            isGuestPasswordEnabled: isGuestPasswordEnabled,
+            flightPath: []
+          });
+        } else {
+          const session = sessions.get(uniqueId);
+          
+          // Close old PC connection if exists
+          if (session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
+            console.log(`Replacing existing PC connection for ${uniqueId}`);
+            try {
+              session.pcClient.close();
+            } catch (e) {}
+          }
+          
+          session.pcClient = ws;
+          session.password = password;
+          session.guestPassword = guestPassword;
+          session.isGuestPasswordEnabled = isGuestPasswordEnabled;
+          
+          // Notify all mobile clients that PC is back online
+          session.mobileClients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              try {
+                client.send(JSON.stringify({ type: 'pc_online' }));
+              } catch (e) {}
+            }
+          });
+        }
         
         ws.send(JSON.stringify({ type: 'registered', uniqueId }));
         console.log(`PC registered: ${uniqueId}`);
@@ -196,109 +197,86 @@ if (!sessions.has(uniqueId)) {
         console.log(`Mobile connected to: ${uniqueId}`);
       }
       
-else if (data.type === 'request_control') {
-  // Mobile requesting control access
-  const password = data.password;
-  const session = sessions.get(ws.uniqueId);
-  
-  console.log('DEBUG request_control:');
-  console.log('  Entered password:', password);
-  console.log('  Session password:', session ? session.password : 'NO SESSION');
-  console.log('  Session guestPassword:', session ? session.guestPassword : 'NO SESSION');
-  console.log('  isGuestPasswordEnabled:', session ? session.isGuestPasswordEnabled : 'NO SESSION');
-  
-  if (!session) {
-    ws.send(JSON.stringify({ type: 'auth_failed' }));
-    return;
-  }
-  
-  // Check main password or guest password (only if guest password is enabled)
-  const isMainPassword = password === session.password;
-  const isGuestPassword = session.isGuestPasswordEnabled && password === session.guestPassword;
-  
-  console.log('  isMainPassword:', isMainPassword);
-  console.log('  isGuestPassword:', isGuestPassword);
-  
-  if (isMainPassword || isGuestPassword) {
-    ws.hasControlAccess = true;
-    ws.send(JSON.stringify({ type: 'control_granted' }));
-  } else {
-    ws.send(JSON.stringify({ type: 'auth_failed' }));
-  }
-}
-
-else if (data.type === 'flight_data') {
-      console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
-  console.log('Flight data:', data.data ? 'Has data' : 'No data');
-  // Store flight data from PC for public map
-  if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
-    const session = sessions.get(ws.uniqueId);
-    session.lastFlightData = data.data;
-    session.isPaused = data.data.isPaused || false; // Store pause state
-    
-    // Store position in flight path
-    if (!session.flightPath) {
-      session.flightPath = [];
-    }
-    const lat = data.data.latitude;
-    const lon = data.data.longitude;
-    if (lat && lon) {
-      const lastPos = session.flightPath.length > 0 ? session.flightPath[session.flightPath.length - 1] : null;
-      if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
-        session.flightPath.push([lat, lon]);
+      else if (data.type === 'request_control') {
+        // Mobile requesting control access
+        const password = data.password;
+        const session = sessions.get(ws.uniqueId);
+        
+        console.log('DEBUG request_control:');
+        console.log('  Entered password:', password);
+        console.log('  Session password:', session ? session.password : 'NO SESSION');
+        console.log('  Session guestPassword:', session ? session.guestPassword : 'NO SESSION');
+        console.log('  isGuestPasswordEnabled:', session ? session.isGuestPasswordEnabled : 'NO SESSION');
+        
+        if (!session) {
+          ws.send(JSON.stringify({ type: 'auth_failed' }));
+          return;
+        }
+        
+        const isMainPassword = password === session.password;
+        const isGuestPassword = session.isGuestPasswordEnabled && password === session.guestPassword;
+        
+        console.log('  isMainPassword:', isMainPassword);
+        console.log('  isGuestPassword:', isGuestPassword);
+        
+        if (isMainPassword || isGuestPassword) {
+          ws.hasControlAccess = true;
+          ws.send(JSON.stringify({ type: 'control_granted' }));
+        } else {
+          ws.send(JSON.stringify({ type: 'auth_failed' }));
+        }
       }
-    }
-  }
-  
-  // Forward to mobile clients
-  const session = sessions.get(ws.uniqueId);
-  if (session) {
-    session.mobileClients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(data));
-      }
-    });
-  }
-}
       
-else if (data.type === 'position_update') {
-        // Store flight data on server for sharing with other users
+      else if (data.type === 'flight_data') {
+        console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
+        console.log('Flight data:', data.data ? 'Has data' : 'No data');
+        
+        if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
+          const session = sessions.get(ws.uniqueId);
+          session.lastFlightData = data.data;
+          session.isPaused = data.data.isPaused || false;
+          
+          if (!session.flightPath) {
+            session.flightPath = [];
+          }
+          const lat = data.data.latitude;
+          const lon = data.data.longitude;
+          if (lat && lon) {
+            const lastPos = session.flightPath.length > 0 ? session.flightPath[session.flightPath.length - 1] : null;
+            if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
+              session.flightPath.push([lat, lon]);
+            }
+          }
+        }
+        
+        const session = sessions.get(ws.uniqueId);
+        if (session) {
+          session.mobileClients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(JSON.stringify(data));
+            }
+          });
+        }
+      }
+      
+      else if (data.type === 'position_update') {
         if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
           sessions.get(ws.uniqueId).lastFlightData = data.data;
         }
       }
       
       else if (data.type === 'request_online_aircraft') {
-        // Send list of online aircraft to requesting mobile client
         ws.send(JSON.stringify({ 
           type: 'online_aircraft',
           aircraft: getOnlineAircraft()
         }));
       }
       
-// ADD THE NEW CODE HERE (before the final 'else' block)
-else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distance') {
-  const session = sessions.get(ws.uniqueId);  // ADD THIS LINE
-  
-  if (!ws.hasControlAccess) {
-    ws.send(JSON.stringify({ 
-      type: 'control_required',
-      message: 'Enter password to access controls'
-    }));
-    return;
-  }
-  
-  // Forward to PC
-  if (session && session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
-    session.pcClient.send(JSON.stringify(data));
-  }
-}
-      
       else {
-        // Route all other messages
+        // Route all other messages INCLUDING AUTOPAUSE
         const session = sessions.get(ws.uniqueId);
         
-        if (ws.clientType === 'mobile' && session.pcClient) {
+        if (ws.clientType === 'mobile' && session && session.pcClient) {
           // Check if command requires control access
           if (data.type.includes('autopilot') || 
               data.type === 'pause_toggle' || 
@@ -310,6 +288,8 @@ else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distan
               data.type === 'toggle_parking_brake' ||
               data.type === 'change_flaps' ||
               data.type === 'throttle_control' ||
+              data.type === 'autopause_toggle' ||  // ADD THIS
+              data.type === 'autopause_set_distance' ||  // ADD THIS
               data.type.includes('toggle_light') || 
               data.type.includes('toggle_cabin')) {
             if (!ws.hasControlAccess) {
@@ -321,12 +301,12 @@ else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distan
             }
           }
           
-          // Forward to PC
+          // Forward to PC (this will now include autopause messages)
           if (session.pcClient.readyState === WebSocket.OPEN) {
             session.pcClient.send(JSON.stringify(data));
           }
         }
-        else if (ws.clientType === 'pc') {
+        else if (ws.clientType === 'pc' && session) {
           // Broadcast to all mobile clients
           session.mobileClients.forEach(client => {
             if (client.readyState === WebSocket.OPEN) {
@@ -3674,6 +3654,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
