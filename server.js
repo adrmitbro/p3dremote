@@ -276,6 +276,22 @@ else if (data.type === 'position_update') {
         }));
       }
       
+      // ADD THE NEW CODE HERE (before the final 'else' block)
+      else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distance') {
+        if (!ws.hasControlAccess) {
+          ws.send(JSON.stringify({ 
+            type: 'control_required',
+            message: 'Enter password to access controls'
+          }));
+          return;
+        }
+        
+        // Forward to PC
+        if (session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
+          session.pcClient.send(JSON.stringify(data));
+        }
+      }
+      
       else {
         // Route all other messages
         const session = sessions.get(ws.uniqueId);
@@ -1622,6 +1638,8 @@ function getMobileAppHTML() {
         let userLon = 0;
         let userHeading = 0;
         let currentFlightData = {};
+        let autopauseEnabled = false;
+let autopauseDistance = 100;
         let mapInitialized = false;
 let pfdCanvas = null;
 let pfdCtx = null;
@@ -2477,6 +2495,41 @@ function unlockControls() {
         function toggleCabin(cabinType) {
             ws.send(JSON.stringify({ type: 'toggle_cabin', cabinType: cabinType }));
         }
+
+        function toggleAutopause() {
+    autopauseEnabled = !autopauseEnabled;
+    updateToggle('autopauseEnabled', autopauseEnabled, autopauseEnabled ? 'ON' : 'OFF');
+    
+    if (autopauseEnabled) {
+        document.getElementById('autopauseStatus').style.display = 'block';
+        ws.send(JSON.stringify({ 
+            type: 'autopause_toggle', 
+            enabled: true,
+            distance: autopauseDistance 
+        }));
+    } else {
+        document.getElementById('autopauseStatus').style.display = 'none';
+        ws.send(JSON.stringify({ 
+            type: 'autopause_toggle', 
+            enabled: false 
+        }));
+    }
+}
+
+function setAutopauseDistance() {
+    const distance = parseInt(document.getElementById('autopauseDistance').value);
+    if (!isNaN(distance) && distance > 0) {
+        autopauseDistance = distance;
+        document.getElementById('autopauseDistanceDisplay').textContent = distance;
+        
+        if (autopauseEnabled) {
+            ws.send(JSON.stringify({ 
+                type: 'autopause_set_distance', 
+                distance: distance 
+            }));
+        }
+    }
+}
 function initInstruments() {
     pfdCanvas = document.getElementById('pfdCanvas');
     pfdCtx = pfdCanvas.getContext('2d');
@@ -3600,6 +3653,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
