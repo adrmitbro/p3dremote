@@ -276,21 +276,23 @@ else if (data.type === 'position_update') {
         }));
       }
       
-      // ADD THE NEW CODE HERE (before the final 'else' block)
-      else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distance') {
-        if (!ws.hasControlAccess) {
-          ws.send(JSON.stringify({ 
-            type: 'control_required',
-            message: 'Enter password to access controls'
-          }));
-          return;
-        }
-        
-        // Forward to PC
-        if (session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
-          session.pcClient.send(JSON.stringify(data));
-        }
-      }
+// ADD THE NEW CODE HERE (before the final 'else' block)
+else if (data.type === 'autopause_toggle' || data.type === 'autopause_set_distance') {
+  const session = sessions.get(ws.uniqueId);  // ADD THIS LINE
+  
+  if (!ws.hasControlAccess) {
+    ws.send(JSON.stringify({ 
+      type: 'control_required',
+      message: 'Enter password to access controls'
+    }));
+    return;
+  }
+  
+  // Forward to PC
+  if (session && session.pcClient && session.pcClient.readyState === WebSocket.OPEN) {
+    session.pcClient.send(JSON.stringify(data));
+  }
+}
       
       else {
         // Route all other messages
@@ -3672,6 +3674,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
