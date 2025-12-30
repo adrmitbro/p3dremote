@@ -470,7 +470,6 @@ function getPublicMapHTML() {
     <script>
 let map = null;
 let aircraftMarkers = [];
-let ws = null;
 let pingInterval = null; // Add this at the top with other variables (around line 1630)
 
 let allAircraft = [];
@@ -3674,6 +3673,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
