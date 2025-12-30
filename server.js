@@ -469,6 +469,8 @@ function getPublicMapHTML() {
 let map = null;
 let aircraftMarkers = [];
 let ws = null;
+let pingInterval = null; // Add this at the top with other variables (around line 1630)
+
 let allAircraft = [];
 let markerMap = new Map(); // Track markers by uniqueId
 let flightPaths = new Map(); // Track flight paths by uniqueId
@@ -1667,42 +1669,55 @@ function switchTab(index) {
             }
         }
 
-        function connectToSim() {
-            uniqueId = document.getElementById('uniqueId').value.trim();
-            if (!uniqueId) {
-                alert('Please enter your Unique ID');
-                return;
-            }
-            
-            localStorage.setItem('p3d_unique_id', uniqueId);
-            
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(protocol + '//' + window.location.host);
-            
-            ws.onopen = () => {
-                ws.send(JSON.stringify({ 
-                    type: 'connect_mobile',
-                    uniqueId: uniqueId
-                }));
-            };
+let ws = null;
+let pingInterval = null; // Add this at the top with other variables (around line 1630)
 
-                // ADD THIS PING INTERVAL HERE ↓↓↓
-    setInterval(() => {
+function connectToSim() {
+    uniqueId = document.getElementById('uniqueId').value.trim();
+    if (!uniqueId) {
+        alert('Please enter your Unique ID');
+        return;
+    }
+    
+    // Clear old ping interval if exists
+    if (pingInterval) {
+        clearInterval(pingInterval);
+        pingInterval = null;
+    }
+    
+    localStorage.setItem('p3d_unique_id', uniqueId);
+    
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(protocol + '//' + window.location.host);
+    
+    ws.onopen = () => {
+        ws.send(JSON.stringify({ 
+            type: 'connect_mobile',
+            uniqueId: uniqueId
+        }));
+    };
+
+    // Store the interval ID so we can clear it later
+    pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping' }));
         }
-    }, 20000); // Ping every 20 seconds
+    }, 20000);
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                handleMessage(data);
-            };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        handleMessage(data);
+    };
 
-            ws.onclose = () => {
-                updateStatus('offline');
-                setTimeout(connectToSim, 3000);
-            };
+    ws.onclose = () => {
+        updateStatus('offline');
+        if (pingInterval) {
+            clearInterval(pingInterval);
+            pingInterval = null;
         }
+        setTimeout(connectToSim, 3000);
+    };
+}
 
         function handleMessage(data) {
             switch(data.type) {
@@ -3660,6 +3675,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
