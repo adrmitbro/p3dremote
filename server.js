@@ -1673,6 +1673,22 @@ function connectToSim() {
             type: 'connect_mobile',
             uniqueId: uniqueId
         }));
+                // RESTORE AUTOPAUSE SETTINGS AFTER RECONNECT
+        const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
+        const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
+        
+        if (savedAutopauseEnabled) {
+            autopauseEnabled = true;
+            autopauseDistance = savedAutopauseDistance;
+            
+            // Update UI
+            document.getElementById('autopauseDistance').value = savedAutopauseDistance;
+            document.getElementById('autopauseDistanceDisplay').textContent = savedAutopauseDistance;
+            document.getElementById('autopauseStatus').style.display = 'block';
+            
+            // Re-enable autopause on server when we have control access
+            // This will be sent after password is entered
+        }
     };
 
     // Store the interval ID so we can clear it later
@@ -1721,7 +1737,28 @@ case 'control_granted':
     hasControl = true;
     document.getElementById('controlLock').classList.add('hidden');
     document.getElementById('controlPanel').classList.remove('hidden');
-    // Password was correct, keep it saved
+    
+    // RESTORE AUTOPAUSE AFTER GETTING CONTROL
+    const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
+    const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
+    
+    if (savedAutopauseEnabled) {
+        autopauseEnabled = true;
+        autopauseDistance = savedAutopauseDistance;
+        
+        // Update UI
+        updateToggle('autopauseEnabled', true, 'ON');
+        document.getElementById('autopauseDistance').value = savedAutopauseDistance;
+        document.getElementById('autopauseDistanceDisplay').textContent = savedAutopauseDistance;
+        document.getElementById('autopauseStatus').style.display = 'block';
+        
+        // Re-enable on server
+        ws.send(JSON.stringify({ 
+            type: 'autopause_toggle', 
+            enabled: true,
+            distance: savedAutopauseDistance 
+        }));
+    }
     break;
                     
 case 'auth_failed':
@@ -2496,9 +2533,12 @@ function unlockControls() {
             ws.send(JSON.stringify({ type: 'toggle_cabin', cabinType: cabinType }));
         }
 
-        function toggleAutopause() {
+function toggleAutopause() {
     autopauseEnabled = !autopauseEnabled;
     updateToggle('autopauseEnabled', autopauseEnabled, autopauseEnabled ? 'ON' : 'OFF');
+    
+    // SAVE TO LOCALSTORAGE
+    localStorage.setItem('p3d_autopause_enabled', autopauseEnabled.toString());
     
     if (autopauseEnabled) {
         document.getElementById('autopauseStatus').style.display = 'block';
@@ -2522,14 +2562,17 @@ function setAutopauseDistance() {
         autopauseDistance = distance;
         document.getElementById('autopauseDistanceDisplay').textContent = distance;
         
-        if (autopauseEnabled) {
-            ws.send(JSON.stringify({ 
-                type: 'autopause_set_distance', 
-                distance: distance 
-            }));
-        }
+        // SAVE TO LOCALSTORAGE
+        localStorage.setItem('p3d_autopause_distance', distance.toString());
+        
+        // Re-enable autopause with new distance
+        ws.send(JSON.stringify({ 
+            type: 'autopause_set_distance', 
+            distance: distance 
+        }));
     }
 }
+
 function initInstruments() {
     pfdCanvas = document.getElementById('pfdCanvas');
     pfdCtx = pfdCanvas.getContext('2d');
@@ -3644,6 +3687,18 @@ window.onload = () => {
     if (savedPassword) {
         document.getElementById('controlPassword').value = savedPassword;
     }
+    
+    // RESTORE AUTOPAUSE UI STATE
+    const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
+    const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
+    
+    autopauseEnabled = savedAutopauseEnabled;
+    autopauseDistance = savedAutopauseDistance;
+    
+    if (savedAutopauseEnabled) {
+        document.getElementById('autopauseDistance').value = savedAutopauseDistance;
+        document.getElementById('autopauseDistanceDisplay').textContent = savedAutopauseDistance;
+    }
 };
     </script>
 </body>
@@ -3653,6 +3708,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
