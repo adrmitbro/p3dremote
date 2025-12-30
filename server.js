@@ -1686,6 +1686,13 @@ function switchTab(index) {
                 }));
             };
 
+                // ADD THIS PING INTERVAL HERE ↓↓↓
+    setInterval(() => {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+        }
+    }, 20000); // Ping every 20 seconds
+
             ws.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 handleMessage(data);
@@ -3653,6 +3660,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
