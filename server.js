@@ -1020,7 +1020,7 @@ function getMobileAppHTML() {
         
         .aircraft-list-item.selected {
             background: rgba(255, 0, 0, 0.2);
-            border-left: 3px solid #ff0000;
+            border-left: 3px solid #DC6969;
         }
         
         .aircraft-callsign {
@@ -2110,7 +2110,7 @@ function updateAutopilotStatus(data) {
         }
 
         function createUserAircraftIcon(heading, isSelected) {
-            const color = isSelected ? "#FF0000" : "#FFD700";
+            const color = isSelected ? "#DC6969" : "#FFD700";
             const size = isSelected ? 26 : 24;
             
             return L.divIcon({
@@ -2122,7 +2122,7 @@ function updateAutopilotStatus(data) {
         }
 
         function createAIAircraftIcon(heading, isSelected) {
-            const color = isSelected ? "#FF0000" : "#FFFFFF";
+            const color = isSelected ? "#DC6969" : "#FFFFFF";
             const size = isSelected ? 18 : 16;
             
             return L.divIcon({
@@ -3769,6 +3769,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
