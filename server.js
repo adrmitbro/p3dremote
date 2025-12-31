@@ -610,11 +610,12 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
 // Update popup content without closing it
 const popupContent = \`
     <div style="min-width:200px">
-        <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+        <h4 style="margin:0 0 5px 0">${ac.atcId}${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+        <p style="margin:0 0 3px 0; font-size:10px; color:#888;">User ID: ${ac.uniqueId}</p>
+        <p style="margin:0 0 5px 0">Aircraft: ${ac.atcModel}</p>
+        <p style="margin:0 0 5px 0">Speed: ${Math.round(ac.groundSpeed)} kts</p>
+        <p style="margin:0 0 5px 0">Altitude: ${Math.round(ac.altitude)} ft</p>
+        <p style="margin:0">Heading: ${Math.round(ac.heading)}°</p>
     </div>
 \`;
 marker.getPopup().setContent(popupContent);
@@ -1270,16 +1271,17 @@ function getMobileAppHTML() {
         <div id='pauseBadge' class='status paused'>Paused</div>
     </div>
 
-    <div id='loginScreen' class='login-screen'>
-        <div class='login-card'>
-            <h2>Connect to Simulator</h2>
-            <div class='info-box'>
-                Enter your Unique ID from PC Server
-            </div>
-            <input type='text' id='uniqueId' placeholder='Unique ID' autocapitalize='off'>
-            <button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
+<div id='loginScreen' class='login-screen'>
+    <div class='login-card'>
+        <h2>Connect to Simulator</h2>
+        <div class='info-box'>
+            Enter your Unique ID and Password from PC Server
         </div>
+        <input type='text' id='uniqueId' placeholder='Unique ID' autocapitalize='off'>
+        <input type='password' id='loginPassword' placeholder='Password'>
+        <button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
     </div>
+</div>
 
     <div id='mainApp' class='hidden'>
 <div class='tabs'>
@@ -1399,14 +1401,7 @@ function getMobileAppHTML() {
 </div>
 
 <!-- Autopilot Tab -->
-<div class='tab-content'>
-    <div id='controlLock' class='card'>
-        <div class='info-box'>🔒 Enter password to access controls</div>
-        <input type='password' id='controlPassword' placeholder='Password'>
-        <button class='btn btn-primary' onclick='unlockControls()'>Unlock Controls</button>
-    </div>
-    
-    <div id='controlPanel' class='hidden'>
+<div id='controlPanel'>
         <div class='card'>
             <div class='btn-group'>
                 <button class='btn btn-secondary' id='btnPause' onclick='togglePause()'>⏸️ Pause</button>
@@ -1702,10 +1697,20 @@ function switchTab(index) {
 
 function connectToSim() {
     uniqueId = document.getElementById('uniqueId').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    
     if (!uniqueId) {
         alert('Please enter your Unique ID');
         return;
     }
+    
+    if (!password) {
+        alert('Please enter your password');
+        return;
+    }
+    
+    // Store password for later use
+    localStorage.setItem('p3d_control_password', password);
     
     // Clear old ping interval if exists
     if (pingInterval) {
@@ -1718,11 +1723,19 @@ function connectToSim() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(protocol + '//' + window.location.host);
     
-    ws.onopen = () => {
+ws.onopen = () => {
+    ws.send(JSON.stringify({ 
+        type: 'connect_mobile',
+        uniqueId: uniqueId
+    }));
+    
+    // Automatically request control access with password
+    setTimeout(() => {
         ws.send(JSON.stringify({ 
-            type: 'connect_mobile',
-            uniqueId: uniqueId
+            type: 'request_control', 
+            password: password 
         }));
+    }, 500);
                 // RESTORE AUTOPAUSE SETTINGS AFTER RECONNECT
         const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
         const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
@@ -1785,8 +1798,8 @@ case 'connected':
                     
 case 'control_granted':
     hasControl = true;
-    document.getElementById('controlLock').classList.add('hidden');
-    document.getElementById('controlPanel').classList.remove('hidden');
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
     
     // RESTORE AUTOPAUSE AFTER GETTING CONTROL
     const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
@@ -1812,20 +1825,25 @@ case 'control_granted':
     break;
                     
 case 'auth_failed':
-    alert('Wrong password!');
+    alert('Wrong password! Please try again.');
     // Clear saved password since it was wrong
     localStorage.removeItem('p3d_control_password');
-    document.getElementById('controlPassword').value = '';
+    // Stay on login screen
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    // Clear password field
+    document.getElementById('loginPassword').value = '';
     break;
                     
-                case 'control_required':
-                    if (document.getElementById('controlLock').classList.contains('hidden')) {
-                        document.getElementById('controlLock').classList.remove('hidden');
-                        document.getElementById('controlPanel').classList.add('hidden');
-                        document.getElementById('controlPassword').value = '';
-                        alert(data.message);
-                    }
-                    break;
+case 'control_required':
+    // Kick user back to login screen
+    alert(data.message);
+    hasControl = false;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginPassword').value = '';
+    localStorage.removeItem('p3d_control_password');
+    break;
                     
                 case 'flight_data':
                     currentFlightData = data.data;
@@ -2425,16 +2443,6 @@ function updateUserAircraftDetails() {
                 btn.textContent = 'Follow Aircraft';
             }
         }
-
-function unlockControls() {
-    const password = document.getElementById('controlPassword').value;
-    ws.send(JSON.stringify({ type: 'request_control', password }));
-    
-    // Save password to localStorage for next time
-    if (password) {
-        localStorage.setItem('p3d_control_password', password);
-    }
-}
 
         function togglePause() {
             ws.send(JSON.stringify({ type: 'pause_toggle' }));
@@ -3735,7 +3743,7 @@ window.onload = () => {
     
     const savedPassword = localStorage.getItem('p3d_control_password');
     if (savedPassword) {
-        document.getElementById('controlPassword').value = savedPassword;
+        document.getElementById('loginPassword').value = savedPassword;
     }
     
     // RESTORE AUTOPAUSE UI STATE
@@ -3758,6 +3766,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
