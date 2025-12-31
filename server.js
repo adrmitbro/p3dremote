@@ -482,34 +482,37 @@ let selectedAircraftId = null; // Track which aircraft path is shown
 function getAircraftIconUrl(atcModel) {
     const model = (atcModel || '').toUpperCase();
     
+    // Using jsDelivr CDN (CORS-friendly)
+    const baseUrl = 'https://cdn.jsdelivr.net/gh/adrmitbro/p3dremote@main/';
+    
     // 747
     if (model.includes('747')) {
-        return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/747.png';
+        return baseUrl + '747.png';
     }
     // A380
     if (model.includes('A380') || model.includes('A-380')) {
-        return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/a380.png';
+        return baseUrl + 'a380.png';
     }
     // Twin engine wide-bodies (767, A330, A350-900, 787)
     if (model.includes('767') || model.includes('A330') || model.includes('A-330') ||
         model.includes('A350-900') || model.includes('A-350-900') || 
         model.includes('787') || model.includes('B787')) {
-        return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/twin.png';
+        return baseUrl + 'twin.png';
     }
     // 777 and A350-1000
     if (model.includes('777') || model.includes('B777') ||
         model.includes('A350-1000') || model.includes('A-350-1000')) {
-        return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/777.png';
+        return baseUrl + '777.png';
     }
     // A320 family
     if (model.includes('A318') || model.includes('A-318') ||
         model.includes('A319') || model.includes('A-319') ||
         model.includes('A320') || model.includes('A-320') ||
         model.includes('A321') || model.includes('A-321')) {
-        return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/a320.png';
+        return baseUrl + 'a320.png';
     }
     // Default generic aircraft
-    return 'https://raw.githubusercontent.com/adrmitbro/p3dremote/main/twin.png';
+    return baseUrl + 'twin.png';
 }
 
 function createAircraftIcon(heading, atcModel) {
@@ -3794,6 +3797,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
