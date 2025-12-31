@@ -478,53 +478,14 @@ let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
 
-// Map aircraft models to icon images
-function getAircraftIconUrl(atcModel) {
-    const model = (atcModel || '').toUpperCase();
-    
-    // Using jsDelivr CDN (CORS-friendly)
-    const baseUrl = 'https://cdn.jsdelivr.net/gh/adrmitbro/p3dremote@main/';
-    
-    // 747
-    if (model.includes('747')) {
-        return baseUrl + '747.png';
-    }
-    // A380
-    if (model.includes('A380') || model.includes('A-380')) {
-        return baseUrl + 'a380.png';
-    }
-    // Twin engine wide-bodies (767, A330, A350-900, 787)
-    if (model.includes('767') || model.includes('A330') || model.includes('A-330') ||
-        model.includes('A350-900') || model.includes('A-350-900') || 
-        model.includes('787') || model.includes('B787')) {
-        return baseUrl + 'twin.png';
-    }
-    // 777 and A350-1000
-    if (model.includes('777') || model.includes('B777') ||
-        model.includes('A350-1000') || model.includes('A-350-1000')) {
-        return baseUrl + '777.png';
-    }
-    // A320 family
-    if (model.includes('A318') || model.includes('A-318') ||
-        model.includes('A319') || model.includes('A-319') ||
-        model.includes('A320') || model.includes('A-320') ||
-        model.includes('A321') || model.includes('A-321')) {
-        return baseUrl + 'a320.png';
-    }
-    // Default generic aircraft
-    return baseUrl + 'twin.png';
-}
-
-function createAircraftIcon(heading, atcModel) {
-    const iconUrl = getAircraftIconUrl(atcModel);
-    
-    return L.divIcon({
-        html: '<div class="user-aircraft" style="transform: rotate(' + heading + 'deg);"><img src="' + iconUrl + '" style="width: 100%; height: 100%;"></div>',
-        className: '',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-    });
-}
+        function createAircraftIcon(heading) {
+            return L.divIcon({
+                html: \`<div class="user-aircraft" style="transform: rotate(\${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                className: '',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+        }
 
 function initMap() {
     map = L.map('map', {
@@ -644,7 +605,7 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
             // Update existing marker
             const marker = markerMap.get(uniqueId);
             marker.setLatLng([ac.latitude, ac.longitude]);
-            marker.setIcon(createAircraftIcon(ac.heading, ac.atcModel));
+            marker.setIcon(createAircraftIcon(ac.heading));
             
 // Update popup content without closing it
 const popupContent = \`
@@ -659,9 +620,9 @@ const popupContent = \`
 marker.getPopup().setContent(popupContent);
         } else {
             // Create new marker
-const marker = L.marker([ac.latitude, ac.longitude], { 
-    icon: createAircraftIcon(ac.heading, ac.atcModel)
-}).addTo(map);
+            const marker = L.marker([ac.latitude, ac.longitude], { 
+                icon: createAircraftIcon(ac.heading)
+            }).addTo(map);
 
 const popupContent = \`
                 <div style="min-width:200px">
@@ -3797,10 +3758,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
 
 
 
