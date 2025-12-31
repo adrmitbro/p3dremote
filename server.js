@@ -389,14 +389,16 @@ function getPublicMapHTML() {
             gap: 8px;
         }
 
-        .header h1 { 
-            font-size: 13px;
-            font-family: 'Good Times', sans-serif;
-            white-space: nowrap;
-            line-height: 1.2;
-            flex-shrink: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
+.header h1 { 
+            margin: 0;
+            padding: 0;
+            line-height: 0;
+        }
+        
+        .header h1 img {
+            height: 50px;
+            width: auto;
+            display: block;
         }
 .header-right {
             display: flex;
@@ -439,7 +441,7 @@ function getPublicMapHTML() {
 </head>
 <body>
 <div class='header'>
-        <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24' style='height: 40px; vertical-align: middle;'></h1>
+<h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
         <div class='header-right'>
             <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
             <a href='/remote' class='remote-btn'>Remote Control</a>
@@ -3739,6 +3741,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
