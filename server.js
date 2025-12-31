@@ -409,9 +409,10 @@ function getPublicMapHTML() {
         }
 .aircraft-count {
             background: #167fac;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 10px;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
             font-weight: bold;
             white-space: nowrap;
         }
@@ -618,8 +619,7 @@ const popupContent = \`
         <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
         <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
         <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-        <p style="margin:0;font-size:10px;color:#888;">ID: \${ac.uniqueId}</p>
-
+<p style="margin:0;font-size:10px;color:#888;word-break:break-all;">ID: ${uniqueId}</p>
     </div>
 \`;
 marker.getPopup().setContent(popupContent);
@@ -743,18 +743,27 @@ function getMobileAppHTML() {
             color: white;
             overflow-x: hidden;
         }
-        .header {
+.header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-.header h1 { 
+        .header h1 { 
             font-size: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
             font-family: 'Good Times', sans-serif;
+            margin: 0;
+        }
+        .header-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
         }
         .status {
             padding: 6px 12px;
@@ -1270,9 +1279,11 @@ function getMobileAppHTML() {
 <body>
 <div class='header'>
         <h1>Prepar3D Remote</h1>
-        <a href='/' style='background: #2d2d2d; border: 1px solid #167fac; color: #167fac; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;'>← Public Map</a>
-        <div id='statusBadge' class='status offline'>Offline</div>
-        <div id='pauseBadge' class='status paused'>Paused</div>
+        <div class='header-right'>
+            <a href='/' class='remote-btn'>← Public Map</a>
+            <div id='statusBadge' class='status offline'>Offline</div>
+            <div id='pauseBadge' class='status paused'>Paused</div>
+        </div>
     </div>
 
 <div id='loginScreen' class='login-screen'>
@@ -3772,6 +3783,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
