@@ -31,9 +31,8 @@ function getOnlineAircraft() {
         groundSpeed: session.lastFlightData.groundSpeed || 0,
         atcId: session.lastFlightData.atcId || 'Unknown',
         atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft',
-        flightPath: session.flightPath || [],
-        flightPlanWaypoints: session.flightPlanWaypoints || [], // ADD THIS LINE
-        isPaused: session.isPaused || false
+        flightPath: session.flightPath || [], // Include flight path
+        isPaused: session.isPaused || false // Include pause state
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -228,7 +227,7 @@ ws.on('message', (message) => {
         }
       }
       
-else if (data.type === 'flight_data') {
+      else if (data.type === 'flight_data') {
         console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
         console.log('Flight data:', data.data ? 'Has data' : 'No data');
         
@@ -236,11 +235,6 @@ else if (data.type === 'flight_data') {
           const session = sessions.get(ws.uniqueId);
           session.lastFlightData = data.data;
           session.isPaused = data.data.isPaused || false;
-          
-          // Store flight plan waypoints if provided
-          if (data.data.flightPlanWaypoints && Array.isArray(data.data.flightPlanWaypoints)) {
-            session.flightPlanWaypoints = data.data.flightPlanWaypoints;
-          }
           
           if (!session.flightPath) {
             session.flightPath = [];
@@ -481,7 +475,6 @@ let ws = null;
 let allAircraft = [];
 let markerMap = new Map(); // Track markers by uniqueId
 let flightPaths = new Map(); // Track flight paths by uniqueId
-let flightPlanLines = new Map(); // ADD THIS - Track flight plan lines by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
 
@@ -653,29 +646,8 @@ const popupContent = \`
                 toggleFlightPath(uniqueId);
             });
 
-markerMap.set(uniqueId, marker);
+            markerMap.set(uniqueId, marker);
             aircraftMarkers.push(marker);
-        }
-
-        // Draw flight plan (future route) - black dotted line
-        if (ac.flightPlanWaypoints && ac.flightPlanWaypoints.length > 0) {
-            // Remove old flight plan line if exists
-            if (flightPlanLines.has(uniqueId)) {
-                map.removeLayer(flightPlanLines.get(uniqueId));
-            }
-            
-            // Create route from current position through all waypoints
-            const futureRoute = [[ac.latitude, ac.longitude], ...ac.flightPlanWaypoints];
-            
-            const flightPlanLine = L.polyline(futureRoute, {
-                color: '#000000',
-                weight: 2,
-                opacity: 0.7,
-                dashArray: '8, 12',
-                smoothFactor: 1
-            }).addTo(map);
-            
-            flightPlanLines.set(uniqueId, flightPlanLine);
         }
 
         // Update flight path line if this aircraft is selected
@@ -684,7 +656,7 @@ markerMap.set(uniqueId, marker);
         }
     });
 
-// Remove markers for aircraft that are no longer active
+    // Remove markers for aircraft that are no longer active
     markerMap.forEach((marker, uniqueId) => {
         if (!activeIds.has(uniqueId)) {
             map.removeLayer(marker);
@@ -695,12 +667,6 @@ markerMap.set(uniqueId, marker);
             if (pathLines.has(uniqueId)) {
                 map.removeLayer(pathLines.get(uniqueId));
                 pathLines.delete(uniqueId);
-            }
-            
-            // Remove flight plan line if exists
-            if (flightPlanLines.has(uniqueId)) {
-                map.removeLayer(flightPlanLines.get(uniqueId));
-                flightPlanLines.delete(uniqueId);
             }
             
             if (selectedAircraftId === uniqueId) {
@@ -3792,9 +3758,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
 
 
 
