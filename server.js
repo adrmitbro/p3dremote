@@ -438,13 +438,15 @@ function getPublicMapHTML() {
     </style>
 </head>
 <body>
-    <div class='header'>
-        <h1>P3D Live Flight Tracker</h1>
+<div class='header'>
+        <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24' style='height: 40px; vertical-align: middle;'></h1>
         <div class='header-right'>
             <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
             <a href='/remote' class='remote-btn'>Remote Control</a>
         </div>
     </div>
+
+    
     <div id='map'></div>
 
     <script>
@@ -3737,6 +3739,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
