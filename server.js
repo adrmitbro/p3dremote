@@ -431,6 +431,21 @@ function getPublicMapHTML() {
             background: #167fac;
             color: white;
         }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 8px 6px;
+                gap: 4px;
+            }
+            .remote-btn {
+                padding: 6px 8px;
+                font-size: 10px;
+            }
+            .aircraft-count {
+                padding: 6px 8px;
+                font-size: 9px;
+            }
+        }
         #map {
             height: calc(100vh - 70px);
         }
@@ -3742,6 +3757,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
