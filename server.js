@@ -516,7 +516,7 @@ function createAircraftIcon(heading, atcModel) {
     const iconUrl = getAircraftIconUrl(atcModel);
     
     return L.divIcon({
-        html: `<div class="user-aircraft" style="transform: rotate(${heading}deg);"><img src="${iconUrl}" style="width: 100%; height: 100%;"></div>`,
+        html: '<div class="user-aircraft" style="transform: rotate(' + heading + 'deg);"><img src="' + iconUrl + '" style="width: 100%; height: 100%;"></div>',
         className: '',
         iconSize: [24, 24],
         iconAnchor: [12, 12]
@@ -3794,6 +3794,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
