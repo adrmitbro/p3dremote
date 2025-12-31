@@ -408,26 +408,32 @@ function getPublicMapHTML() {
             align-items: flex-end;
         }
 .aircraft-count {
-            background: #167fac;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-        .remote-btn {
-            background: #2d2d2d;
-            border: 1px solid #167fac;
-            color: #167fac;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
+    background: #167fac;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    height: 28px;
+    display: flex;
+    align-items: center;
+}
+.remote-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    height: 28px;
+    display: flex;
+    align-items: center;
+}
         .remote-btn:hover {
             background: #167fac;
             color: white;
@@ -438,14 +444,16 @@ function getPublicMapHTML() {
                 padding: 8px 6px;
                 gap: 4px;
             }
-            .remote-btn {
-                padding: 6px 8px;
-                font-size: 10px;
-            }
-            .aircraft-count {
-                padding: 6px 8px;
-                font-size: 9px;
-            }
+.remote-btn {
+    padding: 6px 8px;
+    font-size: 10px;
+    height: 28px;
+}
+.aircraft-count {
+    padding: 6px 8px;
+    font-size: 10px;
+    height: 28px;
+}
         }
         #map {
             height: calc(100vh - 70px);
@@ -459,7 +467,7 @@ function getPublicMapHTML() {
 <div class='header'>
 <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
         <div class='header-right'>
-            <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
+<div class='aircraft-count' id='aircraftCount'>0 online</div>
             <a href='/remote' class='remote-btn'>Remote Control</a>
         </div>
     </div>
@@ -579,8 +587,8 @@ function initMap() {
 function updateMap() {
     if (!map) return;
 
-    document.getElementById('aircraftCount').textContent = 
-        allAircraft.length + ' aircraft online';
+document.getElementById('aircraftCount').textContent = 
+    allAircraft.length + ' online';
 
     // Track which aircraft IDs are currently active
     const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
@@ -608,14 +616,15 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
             marker.setIcon(createAircraftIcon(ac.heading));
             
 // Update popup content without closing it
-const popupContent = \`
-    <div style="min-width:200px">
-        <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+const popupContent = `
+    <div style="min-width:200px;position:relative;">
+        <span style="position:absolute;top:-5px;right:0;font-size:9px;color:#666;">ID: ${ac.uniqueId}</span>
+        <h4 style="margin:0 0 5px 0">${ac.atcId}${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+        <p style="margin:0 0 5px 0">Aircraft: ${ac.atcModel}</p>
         <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
         <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
         <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-        <p style="margin:0;font-size:10px;color:#888;">ID: \${ac.uniqueId}</p>
+
 
     </div>
 \`;
@@ -3769,6 +3778,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
