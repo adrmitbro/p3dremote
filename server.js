@@ -484,13 +484,25 @@ function initMap() {
         maxZoom: 19
     });
     
+    const hybridLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19
+    });
+    
+    const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+        attribution: '© CartoDB',
+        maxZoom: 19,
+        pane: 'shadowPane'
+    });
+    
     // Add default layer
     osmLayer.addTo(map);
     
     // Layer control
     const baseMaps = {
         "Street Map": osmLayer,
-        "Satellite": satelliteLayer
+        "Satellite": satelliteLayer,
+        "Satellite + Labels": L.layerGroup([hybridLayer, labelsLayer])
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -3725,6 +3737,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
