@@ -473,10 +473,27 @@ function initMap() {
         zoomControl: true
     });
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Base layers
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
+        maxZoom: 19
+    });
+    
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19
+    });
+    
+    // Add default layer
+    osmLayer.addTo(map);
+    
+    // Layer control
+    const baseMaps = {
+        "Street Map": osmLayer,
+        "Satellite": satelliteLayer
+    };
+    
+    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -3708,6 +3725,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
