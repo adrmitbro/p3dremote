@@ -653,10 +653,11 @@ const popupContent = \`
                 toggleFlightPath(uniqueId);
             });
 
-            markerMap.set(uniqueId, marker);
+markerMap.set(uniqueId, marker);
             aircraftMarkers.push(marker);
+        }
 
-            // Draw flight plan (future route) - black dotted line
+        // Draw flight plan (future route) - black dotted line
         if (ac.flightPlanWaypoints && ac.flightPlanWaypoints.length > 0) {
             // Remove old flight plan line if exists
             if (flightPlanLines.has(uniqueId)) {
@@ -675,8 +676,6 @@ const popupContent = \`
             }).addTo(map);
             
             flightPlanLines.set(uniqueId, flightPlanLine);
-        }
-    });
         }
 
         // Update flight path line if this aircraft is selected
@@ -3793,6 +3792,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
