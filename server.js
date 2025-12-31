@@ -409,10 +409,9 @@ function getPublicMapHTML() {
         }
 .aircraft-count {
             background: #167fac;
-            color: #fff;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 10px;
             font-weight: bold;
             white-space: nowrap;
         }
@@ -613,15 +612,16 @@ const isSelected = selectedAircraftId === uniqueId;
             
 // Update popup content without closing it
 const popupContent = \`
-                <div style="min-width:200px">
-                    <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-                    <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-                    <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-                    <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-                    <p style="margin:0 0 5px 0">Heading: \${Math.round(ac.heading)}°</p>
-                    <p style="margin:0;font-size:10px;color:#888;word-break:break-all;">ID: \${ac.uniqueId}</p>
-                </div>
-            \`;
+    <div style="min-width:200px">
+        <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
+        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
+        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
+        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+        <p style="margin:0;font-size:10px;color:#888;">ID: \${ac.uniqueId}</p>
+
+    </div>
+\`;
 marker.getPopup().setContent(popupContent);
         } else {
             // Create new marker
@@ -743,15 +743,11 @@ function getMobileAppHTML() {
             color: white;
             overflow-x: hidden;
         }
-.header {
+        .header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 10px 8px;
+            padding: 15px 20px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
         }
 .header h1 { 
             font-size: 20px;
@@ -759,12 +755,6 @@ function getMobileAppHTML() {
             align-items: center;
             gap: 10px;
             font-family: 'Good Times', sans-serif;
-            margin: 0;
-        }
-        .header-right {
-            display: flex;
-            gap: 8px;
-            align-items: flex-end;
         }
         .status {
             padding: 6px 12px;
@@ -1280,11 +1270,9 @@ function getMobileAppHTML() {
 <body>
 <div class='header'>
         <h1>Prepar3D Remote</h1>
-        <div class='header-right'>
-            <div id='statusBadge' class='status offline'>Offline</div>
-            <div id='pauseBadge' class='status paused'>Paused</div>
-            <a href='/' class='remote-btn'>← Public Map</a>
-        </div>
+        <a href='/' style='background: #2d2d2d; border: 1px solid #167fac; color: #167fac; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;'>← Public Map</a>
+        <div id='statusBadge' class='status offline'>Offline</div>
+        <div id='pauseBadge' class='status paused'>Paused</div>
     </div>
 
 <div id='loginScreen' class='login-screen'>
@@ -3784,12 +3772,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
-
-
-
 
 
 
