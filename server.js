@@ -613,7 +613,7 @@ const isSelected = selectedAircraftId === uniqueId;
             
 // Update popup content without closing it
 const popupContent = \`
-    <div style="min-width:230px">
+    <div style="min-width:180px">
         <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
         <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
         <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
@@ -3773,6 +3773,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
