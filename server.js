@@ -366,7 +366,8 @@ function getPublicMapHTML() {
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>P3D Live Flight Tracker</title>
+    <title>p3dradar24: Live Flight Tracker</title>
+    <link rel="icon" type="image/png" href="https://github.com/adrmitbro/p3dremote/blob/main/favicon.png?raw=true">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.cdnfonts.com/css/good-times-2" rel="stylesheet">
@@ -3757,6 +3758,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
