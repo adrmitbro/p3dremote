@@ -619,7 +619,7 @@ const popupContent = \`
         <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
         <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
         <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-        <p style="margin:0;font-size:8px;color:#888;">ID: \${ac.uniqueId}</p>
+        <p style="margin:0 0 5px 0">ID: \${ac.uniqueId}</p>
 
     </div>
 \`;
@@ -3773,6 +3773,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
