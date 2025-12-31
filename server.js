@@ -433,6 +433,7 @@ function getPublicMapHTML() {
         }
         #map {
             height: calc(100vh - 70px);
+            padding-bottom: 80px;
         }
         .user-aircraft {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
@@ -447,6 +448,7 @@ function getPublicMapHTML() {
             <a href='/remote' class='remote-btn'>Remote Control</a>
         </div>
     </div>
+    
 
     
     <div id='map'></div>
@@ -3741,6 +3743,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
