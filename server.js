@@ -380,13 +380,13 @@ function getPublicMapHTML() {
         }
 .header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 10px 12px;
+            padding: 10px 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
             border-bottom: 2px solid #167fac;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
 
 .header h1 { 
@@ -433,7 +433,6 @@ function getPublicMapHTML() {
         }
         #map {
             height: calc(100vh - 70px);
-            padding-bottom: 80px;
         }
         .user-aircraft {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
@@ -3743,6 +3742,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
