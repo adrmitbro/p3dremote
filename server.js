@@ -753,7 +753,7 @@ function getMobileAppHTML() {
             align-items: center;
             gap: 6px;
         }
-        .header h1 { 
+.header h1 { 
             font-size: 20px;
             display: flex;
             align-items: center;
@@ -1279,12 +1279,12 @@ function getMobileAppHTML() {
 </head>
 <body>
 <div class='header'>
+        <h1>Prepar3D Remote</h1>
         <div class='header-right'>
             <div id='statusBadge' class='status offline'>Offline</div>
             <div id='pauseBadge' class='status paused'>Paused</div>
+            <a href='/' class='remote-btn'>← Public Map</a>
         </div>
-        <h1>Prepar3D Remote</h1>
-        <a href='/' class='remote-btn'>← Public Map</a>
     </div>
 
 <div id='loginScreen' class='login-screen'>
@@ -3784,6 +3784,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
