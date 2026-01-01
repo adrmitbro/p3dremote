@@ -23,7 +23,7 @@ function getOnlineAircraft() {
     console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
       aircraft.push({
-        uniqueId: uniqueId.substring(0, 8),
+        uniqueId: uniqueId,
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
         heading: session.lastFlightData.heading || 0,
@@ -614,13 +614,12 @@ const isSelected = selectedAircraftId === uniqueId;
 // Update popup content without closing it
 const popupContent = \`
     <div style="min-width:180px">
-        <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-        <p style="margin:0 0 5px 0">ID: \${ac.uniqueId}</p>
-
+        <h4 style="margin:0 0 5px 0">${ac.atcId}${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+        <p style="margin:0 0 2px 0;font-size:10px;font-style:italic;color:#888;">${ac.uniqueId}</p>
+        <p style="margin:0 0 5px 0">Aircraft: ${ac.atcModel}</p>
+        <p style="margin:0 0 5px 0">Speed: ${Math.round(ac.groundSpeed)} kts</p>
+        <p style="margin:0 0 5px 0">Altitude: ${Math.round(ac.altitude)} ft</p>
+        <p style="margin:0">Heading: ${Math.round(ac.heading)}°</p>
     </div>
 \`;
 marker.getPopup().setContent(popupContent);
@@ -3829,6 +3828,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
