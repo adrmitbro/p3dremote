@@ -1394,7 +1394,7 @@ function getMobileAppHTML() {
 
 <div class='header'>
     <h1>Prepar3D Remote</h1>
-    <div class='header-center'>
+    <div class='header-right'>
         <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>
             <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
                 <rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/>
@@ -1408,8 +1408,6 @@ function getMobileAppHTML() {
                 <rect x="3" y="8" width="8" height="4" fill="currentColor"/>
             </svg>
         </button>
-    </div>
-    <div class='header-right'>
         <div id='statusBadge' class='status offline'>Offline</div>
         <a href='/' class='public-map-btn'>Public Map</a>
     </div>
@@ -3944,6 +3942,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
