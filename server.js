@@ -758,10 +758,9 @@ function getMobileAppHTML() {
 .header h1 { 
     margin: 0;
     padding: 0;
-    line-height: 1;
+    line-height: 50px;
     font-size: 20px;
     font-family: 'Good Times', sans-serif;
-    white-space: nowrap;
 }
 
 .header-center {
@@ -3945,6 +3944,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
