@@ -763,6 +763,53 @@ function getMobileAppHTML() {
     font-family: 'Good Times', sans-serif;
 }
 
+.header-center {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.header-action-btn {
+    background: #167fac;
+    border: 1px solid #0d5f85;
+    color: #fff;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+}
+
+.header-action-btn:hover:not(:disabled) {
+    background: #1a8fd4;
+    transform: scale(1.05);
+}
+
+.header-action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.header-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #333;
+}
+
+.header-action-btn.paused {
+    background: #800000;
+    border-color: #600000;
+}
+
+.header-action-btn.paused:hover:not(:disabled) {
+    background: #a00000;
+}
+
 .header-right {
     display: flex;
     flex-direction: row;
@@ -784,12 +831,7 @@ function getMobileAppHTML() {
 }
 .status.connected { background: #167fac; }
 .status.offline { background: #f44336; }
-.status.paused { 
-    background: #800000;
-}
-.status.paused:not(.visible) { 
-    display: none;
-}
+
 
 .public-map-btn {
     background: #2d2d2d;
@@ -1325,8 +1367,11 @@ function getMobileAppHTML() {
 
 <div class='header'>
     <h1>Prepar3D Remote</h1>
+    <div class='header-center'>
+        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()' title='Pause/Resume'>⏸️</button>
+        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()' title='Save Flight'>💾</button>
+    </div>
     <div class='header-right'>
-        <div id='pauseBadge' class='status paused'>Paused</div>
         <div id='statusBadge' class='status offline'>Offline</div>
         <a href='/' class='public-map-btn'>Public Map</a>
     </div>
@@ -1969,21 +2014,29 @@ case 'autopilot_state':
                 document.getElementById('ete').textContent = 'Total ETE: --';
             }
 
-            const pauseBadge = document.getElementById('pauseBadge');
-            if (data.isPaused) {
-                pauseBadge.classList.add('visible');
-            } else {
-                pauseBadge.classList.remove('visible');
-            }
+    // Update header pause button
+    const headerPauseBtn = document.getElementById('headerPauseBtn');
+    if (data.isPaused) {
+        headerPauseBtn.textContent = '▶️';
+        headerPauseBtn.className = 'header-action-btn paused';
+        headerPauseBtn.title = 'Resume';
+    } else {
+        headerPauseBtn.textContent = '⏸️';
+        headerPauseBtn.className = 'header-action-btn';
+        headerPauseBtn.title = 'Pause';
+    }
 
-            const btnPause = document.getElementById('btnPause');
-            if (data.isPaused) {
-                btnPause.textContent = '▶️ Resume';
-                btnPause.className = 'btn btn-warning';
-            } else {
-                btnPause.textContent = '⏸️ Pause';
-                btnPause.className = 'btn btn-secondary';
-            }
+    // Update autopilot tab pause button
+    const btnPause = document.getElementById('btnPause');
+    if (btnPause) {
+        if (data.isPaused) {
+            btnPause.textContent = '▶️ Resume';
+            btnPause.className = 'btn btn-warning';
+        } else {
+            btnPause.textContent = '⏸️ Pause';
+            btnPause.className = 'btn btn-secondary';
+        }
+    }
 
             if (map && data.latitude && data.longitude) {
                 updateMap(data.latitude, data.longitude, data.heading);
@@ -3829,6 +3882,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
