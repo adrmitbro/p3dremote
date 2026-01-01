@@ -770,12 +770,12 @@ function getMobileAppHTML() {
 }
 
 .header-action-btn {
-    background: #167fac;
-    border: 1px solid #0d5f85;
-    color: #fff;
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
     padding: 6px 12px;
     border-radius: 6px;
-    font-size: 16px;
+    font-size: 11px;
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s;
@@ -783,12 +783,12 @@ function getMobileAppHTML() {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 40px;
+    white-space: nowrap;
 }
 
 .header-action-btn:hover:not(:disabled) {
-    background: #1a8fd4;
-    transform: scale(1.05);
+    background: #167fac;
+    color: white;
 }
 
 .header-action-btn:active:not(:disabled) {
@@ -798,16 +798,17 @@ function getMobileAppHTML() {
 .header-action-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
-    background: #333;
 }
 
 .header-action-btn.paused {
     background: #800000;
-    border-color: #600000;
+    border-color: #800000;
+    color: #fff;
 }
 
 .header-action-btn.paused:hover:not(:disabled) {
     background: #a00000;
+    border-color: #a00000;
 }
 
 .header-right {
@@ -1368,8 +1369,8 @@ function getMobileAppHTML() {
 <div class='header'>
     <h1>Prepar3D Remote</h1>
     <div class='header-center'>
-        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()' title='Pause/Resume'>⏸️</button>
-        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()' title='Save Flight'>💾</button>
+        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>Pause</button>
+        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()'>Save</button>
     </div>
     <div class='header-right'>
         <div id='statusBadge' class='status offline'>Offline</div>
@@ -2014,16 +2015,14 @@ case 'autopilot_state':
                 document.getElementById('ete').textContent = 'Total ETE: --';
             }
 
-    // Update header pause button
+// Update header pause button
     const headerPauseBtn = document.getElementById('headerPauseBtn');
     if (data.isPaused) {
-        headerPauseBtn.textContent = '▶️';
+        headerPauseBtn.textContent = 'Resume';
         headerPauseBtn.className = 'header-action-btn paused';
-        headerPauseBtn.title = 'Resume';
     } else {
-        headerPauseBtn.textContent = '⏸️';
+        headerPauseBtn.textContent = 'Pause';
         headerPauseBtn.className = 'header-action-btn';
-        headerPauseBtn.title = 'Pause';
     }
 
     // Update autopilot tab pause button
@@ -3882,6 +3881,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
