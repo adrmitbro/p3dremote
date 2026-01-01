@@ -23,7 +23,7 @@ function getOnlineAircraft() {
     console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
       aircraft.push({
-        uniqueId: uniqueId,
+        uniqueId: uniqueId.substring(0, 9),
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
         heading: session.lastFlightData.heading || 0,
