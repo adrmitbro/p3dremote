@@ -744,35 +744,79 @@ function getMobileAppHTML() {
             color: white;
             overflow-x: hidden;
         }
-        .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 2px solid #167fac;
-        }
+.header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 10px 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    border-bottom: 2px solid #167fac;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
+
 .header h1 { 
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Good Times', sans-serif;
-        }
-        .status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-top: 5px;
-            display: inline-block;
-        }
-        .status.connected { background: #167fac; color: #fff; }
-        .status.offline { background: #f44336; color: white; }
-.status.paused { 
-    background: #800000; 
+    font-size: 20px;
+    margin: 0;
+    padding: 0;
+    font-family: 'Good Times', sans-serif;
+}
+
+.header-right {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+
+.status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
     color: #fff;
+}
+.status.connected { background: #167fac; }
+.status.offline { background: #f44336; }
+.status.paused { 
+    background: #800000;
     display: none;
 }
-        .status.paused.visible { display: inline-block; }
+.status.paused.visible { display: inline-block; }
+
+.public-map-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.public-map-btn:hover {
+    background: #167fac;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 8px 6px;
+        gap: 4px;
+    }
+    .public-map-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    .status {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+}
         
         .login-screen {
             padding: 20px;
@@ -1271,13 +1315,13 @@ function getMobileAppHTML() {
 <body>
 
 <div class='header'>
-        <h1>Prepar3D Remote</h1>
-        <a href='/' style='background: #2d2d2d; border: 1px solid #167fac; color: #167fac; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;'>← Public Map</a>
-        <div class='header-right'>
-        <div id='statusBadge' class='status offline'>Offline</div>
+    <h1>Prepar3D Remote</h1>
+    <div class='header-right'>
         <div id='pauseBadge' class='status paused'>Paused</div>
-        </div>
+        <div id='statusBadge' class='status offline'>Offline</div>
+        <a href='/' class='public-map-btn'>Public Map</a>
     </div>
+</div>
 
 <div id='loginScreen' class='login-screen'>
     <div class='login-card'>
@@ -3776,6 +3820,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
