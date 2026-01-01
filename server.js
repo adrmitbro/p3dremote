@@ -757,20 +757,28 @@ function getMobileAppHTML() {
             gap: 6px;
         }
 .header h1 { 
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Good Times', sans-serif;
+            margin: 0;
+            padding: 0;
+            line-height: 0;
         }
-        .status {
+
+        .header-right {
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: flex-end;
+        }
+.status {
+            background: #167fac;
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: bold;
-            margin-top: 5px;
-            display: inline-block;
+            white-space: nowrap;
+            color: #fff;
         }
+
+
         .status.connected { background: #167fac; color: #fff; }
         .status.offline { background: #f44336; color: white; }
 .status.paused { 
@@ -3782,6 +3790,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
