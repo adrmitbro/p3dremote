@@ -787,7 +787,10 @@ function getMobileAppHTML() {
     background: #800000;
     display: none;
 }
-.status.paused.visible { display: inline-block; }
+.status.paused.visible { 
+    display: inline-flex;
+    align-items: center;
+}
 
 .public-map-btn {
     background: #2d2d2d;
@@ -3827,6 +3830,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
