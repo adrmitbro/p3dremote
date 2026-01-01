@@ -773,17 +773,19 @@ function getMobileAppHTML() {
     background: #2d2d2d;
     border: 1px solid #167fac;
     color: #167fac;
-    padding: 6px 12px;
+    padding: 6px 10px;
     border-radius: 6px;
-    font-size: 11px;
-    font-weight: bold;
     cursor: pointer;
     transition: all 0.3s;
     height: 28px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    white-space: nowrap;
+    min-width: 36px;
+}
+
+.header-action-btn svg {
+    display: block;
 }
 
 .header-action-btn:hover:not(:disabled) {
@@ -1369,8 +1371,19 @@ function getMobileAppHTML() {
 <div class='header'>
     <h1>Prepar3D Remote</h1>
     <div class='header-center'>
-        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>Pause</button>
-        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()'>Save</button>
+        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>
+            <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+                <rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/>
+                <rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/>
+            </svg>
+        </button>
+        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()'>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <rect x="3" y="0" width="8" height="5" fill="currentColor"/>
+                <rect x="3" y="8" width="8" height="4" fill="currentColor"/>
+            </svg>
+        </button>
     </div>
     <div class='header-right'>
         <div id='statusBadge' class='status offline'>Offline</div>
@@ -2018,10 +2031,12 @@ case 'autopilot_state':
 // Update header pause button
     const headerPauseBtn = document.getElementById('headerPauseBtn');
     if (data.isPaused) {
-        headerPauseBtn.textContent = 'Resume';
+        // Play icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
         headerPauseBtn.className = 'header-action-btn paused';
     } else {
-        headerPauseBtn.textContent = 'Pause';
+        // Pause icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
         headerPauseBtn.className = 'header-action-btn';
     }
 
@@ -3881,6 +3896,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
