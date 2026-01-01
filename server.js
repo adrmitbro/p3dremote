@@ -758,9 +758,10 @@ function getMobileAppHTML() {
 .header h1 { 
     margin: 0;
     padding: 0;
-    line-height: 50px;
+    line-height: 1;
     font-size: 20px;
     font-family: 'Good Times', sans-serif;
+    white-space: nowrap;
 }
 
 .header-center {
@@ -800,6 +801,12 @@ function getMobileAppHTML() {
 .header-action-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.header-action-btn.saving {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 8px;
 }
 
 .header-action-btn.paused {
@@ -861,6 +868,24 @@ function getMobileAppHTML() {
     .header {
         padding: 8px 6px;
         gap: 4px;
+    }
+    .header h1 {
+        font-size: 16px;
+    }
+    .header-action-btn {
+        padding: 6px 8px;
+        min-width: 32px;
+        height: 26px;
+    }
+    .header-action-btn svg {
+        width: 10px;
+        height: 12px;
+    }
+    .header-action-btn.saving {
+        font-size: 10px;
+        font-weight: bold;
+        padding: 6px 6px;
+        min-width: 28px;
     }
     .public-map-btn {
         padding: 6px 8px;
@@ -2578,33 +2603,49 @@ function updateUserAircraftDetails() {
             ws.send(JSON.stringify({ type: 'pause_toggle' }));
         }
 
-        function saveGame() {
-            const saveBtn = document.querySelector('button[onclick="saveGame()"]');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.textContent = '💾 Saving...';
-            }
-            
-            ws.send(JSON.stringify({ type: 'save_game' }));
-            
-            showSaveProgress();
-            
-            let countdown = 60;
-            const disableInterval = setInterval(() => {
-                countdown--;
-                if (saveBtn) {
-                    saveBtn.textContent = '💾 Wait ' + countdown + 's';
-                }
-                
-                if (countdown <= 0) {
-                    clearInterval(disableInterval);
-                    if (saveBtn) {
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = '💾 Save Flight';
-                    }
-                }
-            }, 1000);
+function saveGame() {
+    const saveBtn = document.querySelector('button[onclick="saveGame()"]');
+    const headerSaveBtn = document.getElementById('headerSaveBtn');
+    
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '💾 Saving...';
+    }
+    
+    if (headerSaveBtn) {
+        headerSaveBtn.disabled = true;
+        headerSaveBtn.classList.add('saving');
+        headerSaveBtn.textContent = '...';
+    }
+    
+    ws.send(JSON.stringify({ type: 'save_game' }));
+    
+    showSaveProgress();
+    
+    let countdown = 60;
+    const disableInterval = setInterval(() => {
+        countdown--;
+        if (saveBtn) {
+            saveBtn.textContent = '💾 Wait ' + countdown + 's';
         }
+        if (headerSaveBtn) {
+            headerSaveBtn.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+            clearInterval(disableInterval);
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Flight';
+            }
+            if (headerSaveBtn) {
+                headerSaveBtn.disabled = false;
+                headerSaveBtn.classList.remove('saving');
+                headerSaveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3" y="0" width="8" height="5" fill="currentColor"/><rect x="3" y="8" width="8" height="4" fill="currentColor"/></svg>';
+            }
+        }
+    }, 1000);
+}
 
         function showSaveProgress() {
             const overlay = document.createElement('div');
@@ -2647,6 +2688,14 @@ function updateUserAircraftDetails() {
             } else {
                 content.innerHTML = '<div style="font-size: 40px; margin-bottom: 15px;">❌</div><h3 style="margin: 0 0 10px 0; color: #f44336;">Save Failed</h3><div style="color: #ccc; font-size: 14px;">Please try again</div>';
             }
+
+            // Reset header save button immediately on success/failure
+    const headerSaveBtn = document.getElementById('headerSaveBtn');
+    if (headerSaveBtn) {
+        headerSaveBtn.disabled = false;
+        headerSaveBtn.classList.remove('saving');
+        headerSaveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3" y="0" width="8" height="5" fill="currentColor"/><rect x="3" y="8" width="8" height="4" fill="currentColor"/></svg>';
+    }
             
             setTimeout(() => {
                 overlay.remove();
@@ -3896,6 +3945,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
