@@ -2167,6 +2167,16 @@ function updateAutopilotUI(data) {
             updateToggle('lightRecognition', !!data.lightRecognition);
             updateToggle('noSmokingSwitch', !!data.noSmokingSwitch);
             updateToggle('seatbeltsSwitch', !!data.seatbeltsSwitch);
+
+            // DEBUG: Log light states
+            console.log('Light States:', {
+                strobe: data.lightStrobe,
+                panel: data.lightPanel,
+                landing: data.lightLanding,
+                taxi: data.lightTaxi,
+                beacon: data.lightBeacon,
+                nav: data.lightNav
+            });
             // Update all engines button based on any engine running
 const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
 updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
@@ -3998,6 +4008,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
