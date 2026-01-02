@@ -2144,7 +2144,7 @@ function updateAutopilotUI(data) {
             updateToggle('gear', data.gear, data.gear ? 'DOWN' : 'UP');
             updateToggle('parkingBrake', data.parkingBrake, data.parkingBrake ? 'ON' : 'OFF');
             
-            document.getElementById('flapsPos').textContent = Math.round(data.flaps) + '%';
+             document.getElementById('flapsPos').textContent = Math.round(data.flaps) + '%';
             
             const spoilersBtn = document.getElementById('spoilers');
             const spoilersActive = data.spoilers > 10;
@@ -2155,31 +2155,21 @@ function updateAutopilotUI(data) {
             navBtn.textContent = data.navMode ? 'GPS' : 'NAV';
             navBtn.className = 'toggle-btn ' + (data.navMode ? 'on' : 'off');
             
-// Lights - ensure proper boolean conversion
-            updateToggle('lightStrobe', !!data.lightStrobe);
-            updateToggle('lightPanel', !!data.lightPanel);
-            updateToggle('lightLanding', !!data.lightLanding);
-            updateToggle('lightTaxi', !!data.lightTaxi);
-            updateToggle('lightBeacon', !!data.lightBeacon);
-            updateToggle('lightNav', !!data.lightNav);
-            updateToggle('lightLogo', !!data.lightLogo);
-            updateToggle('lightWing', !!data.lightWing);
-            updateToggle('lightRecognition', !!data.lightRecognition);
-            updateToggle('noSmokingSwitch', !!data.noSmokingSwitch);
-            updateToggle('seatbeltsSwitch', !!data.seatbeltsSwitch);
-
-            // DEBUG: Log light states
-            console.log('Light States:', {
-                strobe: data.lightStrobe,
-                panel: data.lightPanel,
-                landing: data.lightLanding,
-                taxi: data.lightTaxi,
-                beacon: data.lightBeacon,
-                nav: data.lightNav
-            });
+            updateToggle('lightStrobe', data.lightStrobe);
+            updateToggle('lightPanel', data.lightPanel);
+            updateToggle('lightLanding', data.lightLanding);
+            updateToggle('lightTaxi', data.lightTaxi);
+            updateToggle('lightBeacon', data.lightBeacon);
+            updateToggle('lightNav', data.lightNav);
+            updateToggle('lightLogo', data.lightLogo);
+            updateToggle('lightWing', data.lightWing);
+            updateToggle('lightRecognition', data.lightRecognition);
+            updateToggle('noSmokingSwitch', data.noSmokingSwitch);
+            updateToggle('seatbeltsSwitch', data.seatbeltsSwitch);
             // Update all engines button based on any engine running
 const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
 updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
+
 
 // Update engine indicators
 updateEngineIndicators(data);
@@ -4008,6 +3998,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
