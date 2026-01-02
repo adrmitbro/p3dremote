@@ -64,7 +64,7 @@ app.get('/remote', (req, res) => {
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log(`Terminating dead connection: ${ws.clientType} - ${ws.uniqueId}`);
+      console.log(`⚠️ Terminating dead connection: ${ws.clientType} - ${ws.uniqueId || 'unknown'}`);
       
       // Clean up session if PC disconnected
       if (ws.uniqueId && ws.clientType === 'pc') {
@@ -336,14 +336,35 @@ ws.on('close', () => {
         // Notify mobile clients
         session.mobileClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'pc_offline' }));
+            try {
+              client.send(JSON.stringify({ type: 'pc_offline' }));
+            } catch (e) {
+              console.error('Error notifying mobile client:', e);
+            }
           }
         });
         
-        // Optional: Remove session entirely if no mobile clients are connected
-        if (session.mobileClients.size === 0) {
-          sessions.delete(ws.uniqueId);
-          console.log(`Session removed: ${ws.uniqueId}`);
+        // DON'T delete session - keep it for potential PC reconnect
+        // Session will be reused when PC reconnects with same uniqueId
+      }
+
+        else if (ws.clientType === 'mobile') {
+        session.mobileClients.delete(ws);
+        console.log(`Mobile disconnected from: ${ws.uniqueId}`);
+        
+        // Only clean up session if BOTH PC is offline AND no mobile clients remain
+        // AND session has been inactive for a while
+        if (!session.pcClient && session.mobileClients.size === 0) {
+          // Wait 5 minutes before deleting session (in case of quick reconnects)
+          setTimeout(() => {
+            if (sessions.has(ws.uniqueId)) {
+              const currentSession = sessions.get(ws.uniqueId);
+              if (!currentSession.pcClient && currentSession.mobileClients.size === 0) {
+                sessions.delete(ws.uniqueId);
+                console.log(`Session removed after timeout: ${ws.uniqueId}`);
+              }
+            }
+          }, 300000); // 5 minutes
         }
       }
       else if (ws.clientType === 'mobile') {
@@ -1872,11 +1893,14 @@ ws.onopen = () => {
         uniqueId: uniqueId
     }));
     
+    // Get stored password (in case of reconnect)
+    const storedPassword = localStorage.getItem('p3d_control_password') || password;
+    
     // Automatically request control access with password
     setTimeout(() => {
         ws.send(JSON.stringify({ 
             type: 'request_control', 
-            password: password 
+            password: storedPassword 
         }));
     }, 500);
                 // RESTORE AUTOPAUSE SETTINGS AFTER RECONNECT
@@ -1938,15 +1962,37 @@ case 'connected':
                 case 'error':
                     alert(data.message);
                     break;
+
+case 'pc_online':
+    console.log('🟢 PC came back online, re-requesting control');
+    updateStatus('connected');
+    
+    // Automatically re-request control when PC comes back
+    const savedPassword = localStorage.getItem('p3d_control_password');
+    if (savedPassword) {
+        setTimeout(() => {
+            ws.send(JSON.stringify({ 
+                type: 'request_control', 
+                password: savedPassword 
+            }));
+        }, 500);
+    }
+    break;                    
                     
 case 'control_granted':
     hasControl = true;
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
     
+    console.log('✅ Control access granted');
+
+    // Inside case 'control_granted':, ADD THIS LINE:
+localStorage.setItem('p3d_auth_fail_count', '0'); // Reset fail counter on success
+    
     // RESTORE AUTOPAUSE AFTER GETTING CONTROL
     const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
     const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
+    
     
     if (savedAutopauseEnabled) {
         autopauseEnabled = true;
@@ -1968,9 +2014,19 @@ case 'control_granted':
     break;
                     
 case 'auth_failed':
+    console.error('❌ Authentication failed');
     alert('Wrong password! Please try again.');
-    // Clear saved password since it was wrong
-    localStorage.removeItem('p3d_control_password');
+    // DON'T clear saved password immediately - might be temporary server issue
+    // Only clear after 3 failed attempts
+    const failCount = parseInt(localStorage.getItem('p3d_auth_fail_count') || '0') + 1;
+    localStorage.setItem('p3d_auth_fail_count', failCount.toString());
+    
+    if (failCount >= 3) {
+        localStorage.removeItem('p3d_control_password');
+        localStorage.removeItem('p3d_auth_fail_count');
+        console.log('Cleared password after 3 failed attempts');
+    }
+    
     // Stay on login screen
     document.getElementById('loginScreen').classList.remove('hidden');
     document.getElementById('mainApp').classList.add('hidden');
@@ -3942,6 +3998,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
