@@ -1567,13 +1567,6 @@ function getMobileAppHTML() {
 <div class='tab-content'>
 <div id='controlPanel'>
         <div class='card'>
-            <div class='btn-group'>
-                <button class='btn btn-secondary' id='btnPause' onclick='togglePause()'>⏸️ Pause</button>
-                <button class='btn btn-primary' onclick='saveGame()'>💾 Save Flight</button>
-            </div>
-        </div>
-
-        <div class='card'>
             <h3 style='margin-bottom: 10px;'>Summary</h3>
             <div class='summary-container'>
                 <div class='summary-main'>
@@ -1921,12 +1914,12 @@ ws.onopen = () => {
         }
     };
 
-    // Store the interval ID so we can clear it later
+// More frequent pings to maintain connection - every 15 seconds
     pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping' }));
         }
-    }, 20000);
+    }, 15000); // Changed from 20000 to 15000
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -2139,6 +2132,7 @@ function updateAutopilotUI(data) {
     // Store autopilot state globally for PFD access
     window.lastAutopilotState = data;
     
+    // Force update all toggle states
     updateToggle('apMaster', data.master);
             updateToggle('apAlt', data.altitude);
             updateToggle('apHdg', data.heading);
@@ -2161,17 +2155,18 @@ function updateAutopilotUI(data) {
             navBtn.textContent = data.navMode ? 'GPS' : 'NAV';
             navBtn.className = 'toggle-btn ' + (data.navMode ? 'on' : 'off');
             
-            updateToggle('lightStrobe', data.lightStrobe);
-            updateToggle('lightPanel', data.lightPanel);
-            updateToggle('lightLanding', data.lightLanding);
-            updateToggle('lightTaxi', data.lightTaxi);
-            updateToggle('lightBeacon', data.lightBeacon);
-            updateToggle('lightNav', data.lightNav);
-            updateToggle('lightLogo', data.lightLogo);
-            updateToggle('lightWing', data.lightWing);
-            updateToggle('lightRecognition', data.lightRecognition);
-            updateToggle('noSmokingSwitch', data.noSmokingSwitch);
-            updateToggle('seatbeltsSwitch', data.seatbeltsSwitch);
+// Lights - ensure proper boolean conversion
+            updateToggle('lightStrobe', !!data.lightStrobe);
+            updateToggle('lightPanel', !!data.lightPanel);
+            updateToggle('lightLanding', !!data.lightLanding);
+            updateToggle('lightTaxi', !!data.lightTaxi);
+            updateToggle('lightBeacon', !!data.lightBeacon);
+            updateToggle('lightNav', !!data.lightNav);
+            updateToggle('lightLogo', !!data.lightLogo);
+            updateToggle('lightWing', !!data.lightWing);
+            updateToggle('lightRecognition', !!data.lightRecognition);
+            updateToggle('noSmokingSwitch', !!data.noSmokingSwitch);
+            updateToggle('seatbeltsSwitch', !!data.seatbeltsSwitch);
             // Update all engines button based on any engine running
 const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
 updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
@@ -2184,9 +2179,11 @@ updateEngineIndicators(data);
         }
 
 function updateEngineIndicators(data) {
-    // Determine number of engines
-    const hasEngine3 = data.engine3N2 !== undefined && data.engine3N2 > 0;
-    const hasEngine4 = data.engine4N2 !== undefined && data.engine4N2 > 0;
+    // More reliable engine detection - check if ANY data exists for engines 3/4
+    const hasEngine3 = (data.engine3N2 !== undefined && data.engine3N2 !== null) || 
+                       (data.engine3N1 !== undefined && data.engine3N1 !== null);
+    const hasEngine4 = (data.engine4N2 !== undefined && data.engine4N2 !== null) || 
+                       (data.engine4N1 !== undefined && data.engine4N1 !== null);
     const numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
     
     // Get or create indicator container
@@ -3485,8 +3482,11 @@ function drawEICAS() {
     const apData = window.lastAutopilotState || {};
     
     // Auto-detect number of engines
-    const hasEngine3 = apData.engine3N1 !== undefined && apData.engine3N1 > 0;
-    const hasEngine4 = apData.engine4N1 !== undefined && apData.engine4N1 > 0;
+// More reliable engine detection for EICAS
+    const hasEngine3 = (apData.engine3N1 !== undefined && apData.engine3N1 !== null) || 
+                       (apData.engine3N2 !== undefined && apData.engine3N2 !== null);
+    const hasEngine4 = (apData.engine4N1 !== undefined && apData.engine4N1 !== null) || 
+                       (apData.engine4N2 !== undefined && apData.engine4N2 !== null);
     numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
     
     if (eicasPage === 0) {
@@ -3998,6 +3998,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
