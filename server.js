@@ -766,13 +766,11 @@ function updateMap() {
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-            // Compact popup - just registration/ID
-            const popupContent = `
-                <div style="min-width:120px; text-align:center;">
-                    <h4 style="margin:0; font-size:14px;">${ac.atcId}</h4>
-                    <p style="margin:2px 0 0 0; font-size:10px; color:#888;">ID: ${ac.uniqueId}</p>
-                </div>
-            `;
+// Compact popup - just registration/ID
+const popupContent = '<div style="min-width:120px; text-align:center;">' +
+    '<h4 style="margin:0; font-size:14px;">' + ac.atcId + '</h4>' +
+    '<p style="margin:2px 0 0 0; font-size:10px; color:#888;">ID: ' + ac.uniqueId + '</p>' +
+    '</div>';
 
             marker.bindPopup(popupContent, {
                 closeButton: false,
@@ -4173,6 +4171,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
