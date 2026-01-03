@@ -856,16 +856,23 @@ if (markerMap.has(uniqueId)) {
 const isSelected = selectedAircraftId === uniqueId;
             marker.setIcon(createAircraftIcon(ac.heading, isSelected));
             
-            // Update popup content - just callsign
-            marker.getPopup().setContent(ac.atcId);
-} else {
+            // Update popup content - flight number or callsign
+            const displayId = (ac.atcAirline && ac.atcFlightNumber) 
+                ? ac.atcAirline + ac.atcFlightNumber 
+                : ac.atcId;
+            marker.getPopup().setContent(displayId);
+        } else {
             // Create new marker
             const marker = L.marker([ac.latitude, ac.longitude], { 
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-            // Simple popup with just callsign
-            marker.bindPopup(ac.atcId, {
+// Simple popup with flight number or callsign
+            const displayId = (ac.atcAirline && ac.atcFlightNumber) 
+                ? ac.atcAirline + ac.atcFlightNumber 
+                : ac.atcId;
+            
+            marker.bindPopup(displayId, {
                 closeButton: false,
                 autoClose: true,
                 closeOnClick: true
@@ -948,9 +955,14 @@ function updateFlightPathLine(uniqueId) {
 function openPanel(aircraft) {
             const panel = document.getElementById('infoPanel');
             
+            // Create flight number display (e.g., "LH069" or fallback to callsign)
+            const flightNumber = (aircraft.atcAirline && aircraft.atcFlightNumber) 
+                ? aircraft.atcAirline + aircraft.atcFlightNumber 
+                : aircraft.atcId;
+            
             // Update panel content
-            document.getElementById('panelCallsign').textContent = aircraft.atcId;
-            document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
+            document.getElementById('panelCallsign').textContent = flightNumber;
+            document.getElementById('panelRegistration').textContent = aircraft.atcId; // Show callsign as secondary info
             document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
             document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
             document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
@@ -4234,6 +4246,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
