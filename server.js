@@ -22,7 +22,7 @@ function getOnlineAircraft() {
   sessions.forEach((session, uniqueId) => {
     console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
-      aircraft.push({
+aircraft.push({
         uniqueId: uniqueId.substring(0, 9),
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
@@ -31,11 +31,11 @@ function getOnlineAircraft() {
         groundSpeed: session.lastFlightData.groundSpeed || 0,
         atcId: session.lastFlightData.atcId || 'Unknown',
         atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft',
-        manufacturer: session.lastFlightData.manufacturer || null,
-        type: session.lastFlightData.type || null,
-        variation: session.lastFlightData.variation || null,
-        flightPath: session.flightPath || [], // Include flight path
-        isPaused: session.isPaused || false // Include pause state
+        ui_manufacturer: session.lastFlightData.ui_manufacturer || null,
+        ui_type: session.lastFlightData.ui_type || null,
+        ui_variation: session.lastFlightData.ui_variation || null,
+        flightPath: session.flightPath || [],
+        isPaused: session.isPaused || false
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -951,9 +951,9 @@ function openPanel(aircraft) {
             // Update panel content
             document.getElementById('panelCallsign').textContent = aircraft.atcId;
             document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-            document.getElementById('panelManufacturer').textContent = aircraft.manufacturer || '---';
-            document.getElementById('panelType').textContent = aircraft.type || '---';
-            document.getElementById('panelVariation').textContent = aircraft.variation || '---';
+            document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
+            document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
+            document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
             document.getElementById('panelAircraft').textContent = aircraft.atcModel;
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
             document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
@@ -4234,6 +4234,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
