@@ -469,168 +469,170 @@ function getPublicMapHTML() {
                 font-size: 9px;
             }
         }
-        #map {
+#map {
             height: calc(100vh - 70px);
+            position: relative;
+            z-index: 1;
         }
         .user-aircraft {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
         }
-
+        
         /* Slide-out panel styles */
-.info-panel {
-    position: fixed;
-    top: 70px;
-    left: -400px;
-    width: 380px;
-    height: calc(100vh - 70px);
-    background: linear-gradient(to bottom, #1a1a1a 0%, #0d0d0d 100%);
-    box-shadow: 2px 0 20px rgba(0,0,0,0.8);
-    transition: left 0.3s ease;
-    z-index: 1000;
-    overflow-y: auto;
-    border-right: 2px solid #167fac;
-}
-
-.info-panel.open {
-    left: 0;
-}
-
-.panel-header {
-    padding: 20px;
-    border-bottom: 1px solid #333;
-    position: sticky;
-    top: 0;
-    background: #1a1a1a;
-    z-index: 10;
-}
-
-.panel-close {
-    float: right;
-    background: none;
-    border: none;
-    color: #888;
-    font-size: 24px;
-    cursor: pointer;
-    padding: 0;
-    width: 30px;
-    height: 30px;
-    line-height: 30px;
-    text-align: center;
-    transition: color 0.3s;
-}
-
-.panel-close:hover {
-    color: #167fac;
-}
-
-.aircraft-callsign {
-    font-size: 28px;
-    font-weight: bold;
-    color: #167fac;
-    margin-bottom: 5px;
-}
-
-.aircraft-registration {
-    font-size: 14px;
-    color: #888;
-}
-
-.panel-section {
-    padding: 20px;
-    border-bottom: 1px solid #333;
-}
-
-.panel-section:last-child {
-    border-bottom: none;
-}
-
-.section-title {
-    font-size: 12px;
-    color: #888;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    font-weight: bold;
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 0;
-    border-bottom: 1px solid #222;
-}
-
-.info-row:last-child {
-    border-bottom: none;
-}
-
-.info-label {
-    color: #888;
-    font-size: 13px;
-}
-
-.info-value {
-    color: #fff;
-    font-size: 13px;
-    font-weight: bold;
-}
-
-.status-indicator {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    margin-right: 6px;
-}
-
-.status-indicator.paused {
-    background: #ff0000;
-    animation: pulse 1.5s infinite;
-}
-
-.status-indicator.active {
-    background: #00ff00;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-}
-
-/* Simple popup - just registration */
-.leaflet-popup-content-wrapper {
-    background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #167fac;
-    border-radius: 8px;
-    padding: 0;
-}
-
-.leaflet-popup-content {
-    margin: 0;
-    padding: 10px 15px;
-    font-size: 14px;
-    font-weight: bold;
-    color: #167fac;
-    text-align: center;
-    min-width: 80px;
-}
-
-.leaflet-popup-tip {
-    background: rgba(0, 0, 0, 0.9);
-    border: 2px solid #167fac;
-    border-top: none;
-    border-right: none;
-}
-
-@media (max-width: 768px) {
-    .info-panel {
-        width: 100%;
-        left: -100%;
-    }
-    
-    .info-panel.open {
-        left: 0;
-    }
-}
+        .info-panel {
+            position: fixed;
+            top: 70px;
+            left: -400px;
+            width: 380px;
+            height: calc(100vh - 70px);
+            background: linear-gradient(to bottom, #1a1a1a 0%, #0d0d0d 100%);
+            box-shadow: 2px 0 20px rgba(0,0,0,0.8);
+            transition: left 0.3s ease;
+            z-index: 1000;
+            overflow-y: auto;
+            border-right: 2px solid #167fac;
+        }
+        
+        .info-panel.open {
+            left: 0;
+        }
+        
+        .panel-header {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            position: sticky;
+            top: 0;
+            background: #1a1a1a;
+            z-index: 10;
+        }
+        
+        .panel-close {
+            float: right;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            transition: color 0.3s;
+        }
+        
+        .panel-close:hover {
+            color: #167fac;
+        }
+        
+        .aircraft-callsign {
+            font-size: 28px;
+            font-weight: bold;
+            color: #167fac;
+            margin-bottom: 5px;
+        }
+        
+        .aircraft-registration {
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        
+        .section-title {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #888;
+            font-size: 13px;
+        }
+        
+        .info-value {
+            color: #fff;
+            font-size: 13px;
+            font-weight: bold;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .status-indicator.paused {
+            background: #ff0000;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .status-indicator.active {
+            background: #00ff00;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        /* Simple popup - just registration */
+        .leaflet-popup-content-wrapper {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #167fac;
+            border-radius: 8px;
+            padding: 0;
+        }
+        
+        .leaflet-popup-content {
+            margin: 0;
+            padding: 10px 15px;
+            font-size: 14px;
+            font-weight: bold;
+            color: #167fac;
+            text-align: center;
+            min-width: 80px;
+        }
+        
+        .leaflet-popup-tip {
+            background: rgba(0, 0, 0, 0.9);
+            border: 2px solid #167fac;
+            border-top: none;
+            border-right: none;
+        }
+        
+        @media (max-width: 768px) {
+            .info-panel {
+                width: 100%;
+                left: -100%;
+            }
+            
+            .info-panel.open {
+                left: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -644,50 +646,50 @@ function getPublicMapHTML() {
     
 
     
-    <div id='map'></div>
-
+<div id='map'></div>
+    
     <!-- Slide-out info panel -->
-<div id='infoPanel' class='info-panel'>
-    <div class='panel-header'>
-        <button class='panel-close' onclick='closePanel()'>×</button>
-        <div class='aircraft-callsign' id='panelCallsign'>---</div>
-        <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
-    </div>
-    
-    <div class='panel-section'>
-        <div class='section-title'>Status</div>
-        <div class='info-row'>
-            <span class='info-label'>Status</span>
-            <span class='info-value' id='panelStatus'>
-                <span class='status-indicator active'></span>Active
-            </span>
+    <div id='infoPanel' class='info-panel'>
+        <div class='panel-header'>
+            <button class='panel-close' onclick='closePanel()'>×</button>
+            <div class='aircraft-callsign' id='panelCallsign'>---</div>
+            <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
+        </div>
+        
+        <div class='panel-section'>
+            <div class='section-title'>Status</div>
+            <div class='info-row'>
+                <span class='info-label'>Status</span>
+                <span class='info-value' id='panelStatus'>
+                    <span class='status-indicator active'></span>Active
+                </span>
+            </div>
+        </div>
+        
+        <div class='panel-section'>
+            <div class='section-title'>Aircraft Information</div>
+            <div class='info-row'>
+                <span class='info-label'>Aircraft</span>
+                <span class='info-value' id='panelAircraft'>---</span>
+            </div>
+        </div>
+        
+        <div class='panel-section'>
+            <div class='section-title'>Flight Data</div>
+            <div class='info-row'>
+                <span class='info-label'>Speed</span>
+                <span class='info-value' id='panelSpeed'>--- kts</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Altitude</span>
+                <span class='info-value' id='panelAltitude'>--- ft</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Heading</span>
+                <span class='info-value' id='panelHeading'>---°</span>
+            </div>
         </div>
     </div>
-    
-    <div class='panel-section'>
-        <div class='section-title'>Aircraft Information</div>
-        <div class='info-row'>
-            <span class='info-label'>Aircraft</span>
-            <span class='info-value' id='panelAircraft'>---</span>
-        </div>
-    </div>
-    
-    <div class='panel-section'>
-        <div class='section-title'>Flight Data</div>
-        <div class='info-row'>
-            <span class='info-label'>Speed</span>
-            <span class='info-value' id='panelSpeed'>--- kts</span>
-        </div>
-        <div class='info-row'>
-            <span class='info-label'>Altitude</span>
-            <span class='info-value' id='panelAltitude'>--- ft</span>
-        </div>
-        <div class='info-row'>
-            <span class='info-label'>Heading</span>
-            <span class='info-value' id='panelHeading'>---°</span>
-        </div>
-    </div>
-</div>
 
     <script>
 let map = null;
@@ -757,6 +759,7 @@ function initMap() {
     setInterval(requestAircraft, 1000);
 
     // Hide flight path when clicking on empty map area
+// Hide flight path and close panel when clicking on empty map area
 map.on('click', function(e) {
         // Close any open popups
         map.closePopup();
@@ -764,6 +767,9 @@ map.on('click', function(e) {
         if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
             return;
         }
+        
+        // Close panel
+        closePanel();
         
         // Hide any visible flight path
         if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
@@ -827,36 +833,34 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
     path.push([ac.latitude, ac.longitude]);
 }
 
-        if (markerMap.has(uniqueId)) {
+if (markerMap.has(uniqueId)) {
             // Update existing marker
             const marker = markerMap.get(uniqueId);
             marker.setLatLng([ac.latitude, ac.longitude]);
 const isSelected = selectedAircraftId === uniqueId;
             marker.setIcon(createAircraftIcon(ac.heading, isSelected));
             
-// NEW CODE - Simple popup with just registration
-const popupContent = `${ac.atcId}`;
-marker.getPopup().setContent(popupContent);
-        } else {
+            // Update popup content - just callsign
+            marker.getPopup().setContent(ac.atcId);
+} else {
             // Create new marker
-// NEW CODE - Simple popup + panel
-const marker = L.marker([ac.latitude, ac.longitude], { 
-    icon: createAircraftIcon(ac.heading)
-}).addTo(map);
+            const marker = L.marker([ac.latitude, ac.longitude], { 
+                icon: createAircraftIcon(ac.heading)
+            }).addTo(map);
 
-// Simple popup with just callsign
-marker.bindPopup(ac.atcId, {
-    closeButton: false,
-    autoClose: true,
-    closeOnClick: true
-});
+            // Simple popup with just callsign
+            marker.bindPopup(ac.atcId, {
+                closeButton: false,
+                autoClose: true,
+                closeOnClick: true
+            });
 
-// Click opens side panel with full details
-marker.on('click', function(e) {
-    L.DomEvent.stopPropagation(e);
-    openPanel(ac);
-    toggleFlightPath(uniqueId);
-});
+            // Click opens side panel with full details
+            marker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                openPanel(ac);
+                toggleFlightPath(uniqueId);
+            });
 
             markerMap.set(uniqueId, marker);
             aircraftMarkers.push(marker);
@@ -926,32 +930,32 @@ function updateFlightPathLine(uniqueId) {
 }
 
 function openPanel(aircraft) {
-    const panel = document.getElementById('infoPanel');
-    
-    // Update panel content
-    document.getElementById('panelCallsign').textContent = aircraft.atcId;
-    document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-    document.getElementById('panelAircraft').textContent = aircraft.atcModel;
-    document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
-    document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
-    document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
-    
-    // Update status indicator
-    const statusElement = document.getElementById('panelStatus');
-    if (aircraft.isPaused) {
-        statusElement.innerHTML = '<span class="status-indicator paused"></span>Paused';
-    } else {
-        statusElement.innerHTML = '<span class="status-indicator active"></span>Active';
-    }
-    
-    // Show panel
-    panel.classList.add('open');
-}
+            const panel = document.getElementById('infoPanel');
+            
+            // Update panel content
+            document.getElementById('panelCallsign').textContent = aircraft.atcId;
+            document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
+            document.getElementById('panelAircraft').textContent = aircraft.atcModel;
+            document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
+            document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
+            document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
+            
+            // Update status indicator
+            const statusElement = document.getElementById('panelStatus');
+            if (aircraft.isPaused) {
+                statusElement.innerHTML = '<span class="status-indicator paused"></span>Paused';
+            } else {
+                statusElement.innerHTML = '<span class="status-indicator active"></span>Active';
+            }
+            
+            // Show panel
+            panel.classList.add('open');
+        }
 
-function closePanel() {
-    const panel = document.getElementById('infoPanel');
-    panel.classList.remove('open');
-}
+        function closePanel() {
+            const panel = document.getElementById('infoPanel');
+            panel.classList.remove('open');
+        }
 
         window.onload = initMap;
     </script>
@@ -2586,22 +2590,18 @@ function updateAutopilotStatus(data) {
                 mapDragStart = null;
             });
             
-// Update this section:
-map.on('click', function(e) {
-    if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
-        return;
-    }
-    
-    // Close panel
-    closePanel();
-    
-    // Hide any visible flight path
-    if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
-        map.removeLayer(pathLines.get(selectedAircraftId));
-        pathLines.delete(selectedAircraftId);
-        selectedAircraftId = null;
-    }
-});
+            map.on('click', function(e) {
+                if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
+                    return;
+                }
+                
+                selectedAircraft = null;
+                updateMap(userLat, userLon, userHeading);
+                updateNearbyAircraftList();
+                
+                const detailsPanel = document.getElementById('aircraftDetails');
+                detailsPanel.innerHTML = '<p>Click on an aircraft to view details</p>';
+            });
             
             map.on('moveend', function() {
                 const center = map.getCenter();
@@ -4215,8 +4215,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
