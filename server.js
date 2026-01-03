@@ -654,21 +654,16 @@ function getPublicMapHTML() {
     
     <!-- Slide-out info panel -->
     <div id='infoPanel' class='info-panel'>
-        <div class='panel-header'>
-            <button class='panel-close' onclick='closePanel()'>×</button>
-            <div class='aircraft-callsign' id='panelCallsign'>---</div>
-            <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
+<div class='panel-header'>
+    <button class='panel-close' onclick='closePanel()'>×</button>
+    <div class='aircraft-callsign' id='panelCallsign'>---</div>
+    <div style='display: flex; justify-content: space-between; align-items: center;'>
+        <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
+        <div class='aircraft-registration' id='panelStatus'>
+            <span class='status-indicator active'></span>Active
         </div>
-        
-        <div class='panel-section'>
-            <div class='section-title'>Status</div>
-            <div class='info-row'>
-                <span class='info-label'>Status</span>
-                <span class='info-value' id='panelStatus'>
-                    <span class='status-indicator active'></span>Active
-                </span>
-            </div>
-        </div>
+    </div>
+</div>
         
 <div class='panel-section'>
             <div class='section-title'>Aircraft Information</div>
@@ -4234,6 +4229,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
