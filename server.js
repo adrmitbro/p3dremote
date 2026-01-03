@@ -558,7 +558,10 @@ function initMap() {
     setInterval(requestAircraft, 1000);
 
     // Hide flight path when clicking on empty map area
-    map.on('click', function(e) {
+map.on('click', function(e) {
+        // Close any open popups
+        map.closePopup();
+        
         if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
             return;
         }
@@ -2155,17 +2158,17 @@ function updateAutopilotUI(data) {
             navBtn.textContent = data.navMode ? 'GPS' : 'NAV';
             navBtn.className = 'toggle-btn ' + (data.navMode ? 'on' : 'off');
             
-            updateToggle('lightStrobe', data.lightStrobe);
-            updateToggle('lightPanel', data.lightPanel);
-            updateToggle('lightLanding', data.lightLanding);
-            updateToggle('lightTaxi', data.lightTaxi);
-            updateToggle('lightBeacon', data.lightBeacon);
-            updateToggle('lightNav', data.lightNav);
-            updateToggle('lightLogo', data.lightLogo);
-            updateToggle('lightWing', data.lightWing);
-            updateToggle('lightRecognition', data.lightRecognition);
-            updateToggle('noSmokingSwitch', data.noSmokingSwitch);
-            updateToggle('seatbeltsSwitch', data.seatbeltsSwitch);
+updateToggle('lightStrobe', data.lightStrobe, data.lightStrobe ? 'ON' : 'OFF');
+            updateToggle('lightPanel', data.lightPanel, data.lightPanel ? 'ON' : 'OFF');
+            updateToggle('lightLanding', data.lightLanding, data.lightLanding ? 'ON' : 'OFF');
+            updateToggle('lightTaxi', data.lightTaxi, data.lightTaxi ? 'ON' : 'OFF');
+            updateToggle('lightBeacon', data.lightBeacon, data.lightBeacon ? 'ON' : 'OFF');
+            updateToggle('lightNav', data.lightNav, data.lightNav ? 'ON' : 'OFF');
+            updateToggle('lightLogo', data.lightLogo, data.lightLogo ? 'ON' : 'OFF');
+            updateToggle('lightWing', data.lightWing, data.lightWing ? 'ON' : 'OFF');
+            updateToggle('lightRecognition', data.lightRecognition, data.lightRecognition ? 'ON' : 'OFF');
+            updateToggle('noSmokingSwitch', data.noSmokingSwitch, data.noSmokingSwitch ? 'ON' : 'OFF');
+            updateToggle('seatbeltsSwitch', data.seatbeltsSwitch, data.seatbeltsSwitch ? 'ON' : 'OFF');
             // Update all engines button based on any engine running
 const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
 updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
@@ -3998,6 +4001,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
