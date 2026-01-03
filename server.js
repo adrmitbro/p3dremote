@@ -598,39 +598,40 @@ function getPublicMapHTML() {
             50% { opacity: 0.3; }
         }
         
-        /* Simple popup - just registration */
-        .leaflet-popup-content-wrapper {
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #167fac;
-            border-radius: 8px;
-            padding: 0;
-        }
-        
-        .leaflet-popup-content {
-            margin: 0;
-            padding: 10px 15px;
-            font-size: 14px;
-            font-weight: bold;
-            color: #167fac;
-            text-align: center;
-            min-width: 80px;
-        }
-        
-        .leaflet-popup-tip {
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid #167fac;
-            border-top: none;
-            border-right: none;
-        }
+/* Keep original white popup style - don't override */
         
         @media (max-width: 768px) {
             .info-panel {
                 width: 100%;
-                left: -100%;
+                height: 50vh;
+                top: auto;
+                bottom: -50vh;
+                left: 0;
+                right: 0;
+                border-right: none;
+                border-top: 2px solid #167fac;
+                border-radius: 20px 20px 0 0;
+                transition: bottom 0.3s ease;
             }
             
             .info-panel.open {
-                left: 0;
+                bottom: 0;
+            }
+            
+            .panel-header {
+                padding: 15px;
+            }
+            
+            .panel-close {
+                font-size: 28px;
+            }
+            
+            .aircraft-callsign {
+                font-size: 24px;
+            }
+            
+            .panel-section {
+                padding: 15px;
             }
         }
     </style>
@@ -4215,6 +4216,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
