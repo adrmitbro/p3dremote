@@ -769,26 +769,36 @@ function initMap() {
     connectWebSocket();
     setInterval(requestAircraft, 1000);
 
-    // Hide flight path when clicking on empty map area
+// Hide flight path when clicking on empty map area
 // Hide flight path and close panel when clicking on empty map area
 map.on('click', function(e) {
-        // Close any open popups
-        map.closePopup();
+    // Close any open popups
+    map.closePopup();
+    
+    if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
+        return;
+    }
+    
+    // Close panel
+    closePanel();
+    
+    // Hide any visible flight path and reset icon color
+    if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
+        map.removeLayer(pathLines.get(selectedAircraftId));
+        pathLines.delete(selectedAircraftId);
         
-        if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
-            return;
+        // Reset the aircraft icon back to yellow (unselected)
+        const marker = markerMap.get(selectedAircraftId);
+        if (marker) {
+            const aircraft = allAircraft.find(ac => ac.uniqueId === selectedAircraftId);
+            if (aircraft) {
+                marker.setIcon(createAircraftIcon(aircraft.heading, false));
+            }
         }
         
-        // Close panel
-        closePanel();
-        
-        // Hide any visible flight path
-        if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
-            map.removeLayer(pathLines.get(selectedAircraftId));
-            pathLines.delete(selectedAircraftId);
-            selectedAircraftId = null;
-        }
-    });
+        selectedAircraftId = null;
+    }
+});
 }
 
         function connectWebSocket() {
@@ -4229,6 +4239,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
