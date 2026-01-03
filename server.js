@@ -401,74 +401,77 @@ function getPublicMapHTML() {
             overflow: hidden;
         }
 .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 10px 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 2px solid #167fac;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 6px;
-        }
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 10px 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    border-bottom: 2px solid #167fac;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
 
 .header h1 { 
-            margin: 0;
-            padding: 0;
-            line-height: 0;
-        }
-        
-        .header h1 img {
-            height: 50px;
-            width: auto;
-            display: block;
-        }
-.header-right {
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
-            align-items: flex-end;
-        }
-.aircraft-count {
-            background: #167fac;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            white-space: nowrap;
-            color: #fff;
-        }
-        .remote-btn {
-            background: #2d2d2d;
-            border: 1px solid #167fac;
-            color: #167fac;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .remote-btn:hover {
-            background: #167fac;
-            color: white;
-        }
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+}
 
-        @media (max-width: 768px) {
-            .header {
-                padding: 8px 6px;
-                gap: 4px;
-            }
-            .remote-btn {
-                padding: 6px 8px;
-                font-size: 10px;
-            }
-            .aircraft-count {
-                padding: 6px 8px;
-                font-size: 9px;
-            }
-        }
+.header h1 img {
+    height: 50px;
+    width: auto;
+    display: block;
+}
+.header-right {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.aircraft-count {
+    background: #167fac;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    color: #fff;
+}
+
+.remote-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.remote-btn:hover {
+    background: #167fac;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 8px 6px;
+        gap: 4px;
+    }
+    .remote-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    .aircraft-count {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+}
         #map {
             height: calc(100vh - 70px);
         }
@@ -478,13 +481,14 @@ function getPublicMapHTML() {
     </style>
 </head>
 <body>
+
 <div class='header'>
-<h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
-        <div class='header-right'>
-            <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
-            <a href='/remote' class='remote-btn'>Remote Control</a>
-        </div>
+    <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
+    <div class='header-right'>
+        <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
+        <a href='/remote' class='remote-btn'>Remote Control</a>
     </div>
+</div>
     
 
     
@@ -861,7 +865,6 @@ function getMobileAppHTML() {
 }
 .status.connected { background: #167fac; }
 .status.offline { background: #f44336; }
-
 
 .public-map-btn {
     background: #2d2d2d;
@@ -2100,16 +2103,16 @@ case 'autopilot_state':
             }
 
 // Update header pause button
-    const headerPauseBtn = document.getElementById('headerPauseBtn');
-    if (data.isPaused) {
-        // Play icon
-        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
-        headerPauseBtn.className = 'header-action-btn paused';
-    } else {
-        // Pause icon
-        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
-        headerPauseBtn.className = 'header-action-btn';
-    }
+const headerPauseBtn = document.getElementById('headerPauseBtn');
+if (data.isPaused) {
+    // Play icon
+    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
+    headerPauseBtn.className = 'header-action-btn paused';
+} else {
+    // Pause icon
+    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
+    headerPauseBtn.className = 'header-action-btn';
+}
 
     // Update autopilot tab pause button
     const btnPause = document.getElementById('btnPause');
@@ -2662,11 +2665,19 @@ function saveGame() {
         saveBtn.textContent = '💾 Saving...';
     }
     
+    
     if (headerSaveBtn) {
         headerSaveBtn.disabled = true;
         headerSaveBtn.classList.add('saving');
         headerSaveBtn.textContent = '...';
     }
+
+    const headerSaveBtn = document.getElementById('headerSaveBtn');
+if (headerSaveBtn) {
+    headerSaveBtn.disabled = true;
+    headerSaveBtn.classList.add('saving');
+    headerSaveBtn.textContent = '...';
+}
     
     ws.send(JSON.stringify({ type: 'save_game' }));
     
@@ -2678,6 +2689,8 @@ function saveGame() {
         if (saveBtn) {
             saveBtn.textContent = '💾 Wait ' + countdown + 's';
         }
+
+        
         if (headerSaveBtn) {
             headerSaveBtn.textContent = countdown;
         }
@@ -3998,6 +4011,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
