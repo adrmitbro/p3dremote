@@ -942,16 +942,9 @@ function openPanel(aircraft) {
             
             // Update panel content
             document.getElementById('panelCallsign').textContent = aircraft.atcId;
-    document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-    
-    // Build Aircraft Type line: ATC TYPE ATC MODEL ATC AIRLINE
-    let aircraftType = '';
-    if (aircraft.atcType) aircraftType += aircraft.atcType;
-    if (aircraft.atcModel) aircraftType += (aircraftType ? ' ' : '') + aircraft.atcModel;
-    if (aircraft.atcAirline) aircraftType += (aircraftType ? ' ' : '') + aircraft.atcAirline;
-    if (!aircraftType) aircraftType = '---';
-    
-    document.getElementById('panelAircraftType').textContent = aircraftType;
+            document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
+            document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
+            document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
             document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
             document.getElementById('panelAircraft').textContent = aircraft.atcModel;
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
@@ -4233,8 +4226,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
