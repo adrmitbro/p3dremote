@@ -789,8 +789,10 @@ function initMap() {
     // Add custom "Go to Selected Aircraft" button
 const goToButton = L.control({ position: 'topright' });
 goToButton.onAdd = function() {
-    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-    div.innerHTML = '<a href="#" title="Go to Selected Aircraft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg></a>';
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    div.style.width = '34px';
+    div.style.height = '34px';
+    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; background: white; color: #333; line-height: 34px; text-decoration: none; border-radius: 4px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3" fill="currentColor"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg></a>';
     div.onclick = function(e) {
         e.preventDefault();
         if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
@@ -4305,6 +4307,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
