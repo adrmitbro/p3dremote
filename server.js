@@ -770,30 +770,22 @@ function initMap() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-// Add location button to center on user aircraft
-const locationButton = L.control({ position: 'topright' });
-locationButton.onAdd = function() {
+    // Add custom "Go to Selected Aircraft" button
+const goToButton = L.control({ position: 'topright' });
+goToButton.onAdd = function() {
     const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    const button = L.DomUtil.create('a', '', div);
-    button.href = '#';
-    button.title = 'Center on Your Aircraft';
-    button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>';
-    
-    L.DomEvent.on(button, 'click', function(e) {
-        L.DomEvent.preventDefault(e);
-        L.DomEvent.stopPropagation(e);
-        
-        // Center on user aircraft
-        const userAircraft = Array.from(markerMap.values()).find(m => m.options.icon.options.className && m.options.icon.options.className.includes('user-aircraft'));
-        if (userAircraft) {
-            const pos = userAircraft.getLatLng();
-            map.setView([pos.lat, pos.lng], map.getZoom());
+    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="background: #167fac; color: white; padding: 5px 10px; text-decoration: none; display: block; font-size: 11px; font-weight: bold;">📍 Location</a>';
+    div.onclick = function(e) {
+        e.preventDefault();
+        if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
+            const marker = markerMap.get(selectedAircraftId);
+            const pos = marker.getLatLng();
+            map.setView([pos.lat, pos.lng], 10);
         }
-    });
-    
+    };
     return div;
 };
-locationButton.addTo(map);
+goToButton.addTo(map);
 
     connectWebSocket();
     setInterval(requestAircraft, 1000);
@@ -4297,7 +4289,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
 
 
 
