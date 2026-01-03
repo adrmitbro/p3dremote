@@ -671,16 +671,24 @@ function getPublicMapHTML() {
         </div>
         
 <div class='panel-section'>
-    <div class='section-title'>Aircraft Information</div>
-    <div class='info-row'>
-        <span class='info-label'>Aircraft Type</span>
-        <span class='info-value' id='panelAircraftType'>---</span>
-    </div>
-    <div class='info-row'>
-        <span class='info-label'>Callsign</span>
-        <span class='info-value' id='panelCallsignInfo'>---</span>
-    </div>
-</div>
+            <div class='section-title'>Aircraft Information</div>
+            <div class='info-row'>
+                <span class='info-label'>Manufacturer</span>
+                <span class='info-value' id='panelManufacturer'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Type</span>
+                <span class='info-value' id='panelType'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Variation</span>
+                <span class='info-value' id='panelVariation'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Model</span>
+                <span class='info-value' id='panelAircraft'>---</span>
+            </div>
+        </div>
         
         <div class='panel-section'>
             <div class='section-title'>Flight Data</div>
