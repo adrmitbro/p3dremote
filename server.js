@@ -951,9 +951,9 @@ function openPanel(aircraft) {
             // Update panel content
             document.getElementById('panelCallsign').textContent = aircraft.atcId;
             document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-            document.getElementById('panelManufacturer').textContent = aircraft.AtcModel;
-            document.getElementById('panelType').textContent = aircraft.AtcType;
-            document.getElementById('panelVariation').textContent = aircraft.AtcAirline;
+            document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
+            document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
+            document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
             document.getElementById('panelAircraft').textContent = aircraft.atcModel;
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
             document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
@@ -4234,8 +4234,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
