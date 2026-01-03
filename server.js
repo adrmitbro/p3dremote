@@ -671,24 +671,16 @@ function getPublicMapHTML() {
         </div>
         
 <div class='panel-section'>
-            <div class='section-title'>Aircraft Information</div>
-            <div class='info-row'>
-                <span class='info-label'>Manufacturer</span>
-                <span class='info-value' id='panelManufacturer'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Type</span>
-                <span class='info-value' id='panelType'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Variation</span>
-                <span class='info-value' id='panelVariation'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Model</span>
-                <span class='info-value' id='panelAircraft'>---</span>
-            </div>
-        </div>
+    <div class='section-title'>Aircraft Information</div>
+    <div class='info-row'>
+        <span class='info-label'>Aircraft Type</span>
+        <span class='info-value' id='panelAircraftType'>---</span>
+    </div>
+    <div class='info-row'>
+        <span class='info-label'>Callsign</span>
+        <span class='info-value' id='panelCallsignInfo'>---</span>
+    </div>
+</div>
         
         <div class='panel-section'>
             <div class='section-title'>Flight Data</div>
@@ -950,9 +942,16 @@ function openPanel(aircraft) {
             
             // Update panel content
             document.getElementById('panelCallsign').textContent = aircraft.atcId;
-            document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-            document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
-            document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
+    document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
+    
+    // Build Aircraft Type line: ATC TYPE ATC MODEL ATC AIRLINE
+    let aircraftType = '';
+    if (aircraft.atcType) aircraftType += aircraft.atcType;
+    if (aircraft.atcModel) aircraftType += (aircraftType ? ' ' : '') + aircraft.atcModel;
+    if (aircraft.atcAirline) aircraftType += (aircraftType ? ' ' : '') + aircraft.atcAirline;
+    if (!aircraftType) aircraftType = '---';
+    
+    document.getElementById('panelAircraftType').textContent = aircraftType;
             document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
             document.getElementById('panelAircraft').textContent = aircraft.atcModel;
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
@@ -4234,6 +4233,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
