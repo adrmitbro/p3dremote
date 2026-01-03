@@ -666,24 +666,24 @@ function getPublicMapHTML() {
 </div>
         
 <div class='panel-section'>
-            <div class='section-title'>Aircraft Information</div>
-            <div class='info-row'>
-                <span class='info-label'>Manufacturer</span>
-                <span class='info-value' id='panelManufacturer'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Type</span>
-                <span class='info-value' id='panelType'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Variation</span>
-                <span class='info-value' id='panelVariation'>---</span>
-            </div>
-            <div class='info-row'>
-                <span class='info-label'>Model</span>
-                <span class='info-value' id='panelAircraft'>---</span>
-            </div>
-        </div>
+    <div class='section-title'>Aircraft Information</div>
+    <div class='info-row'>
+        <span class='info-label'>Manufacturer</span>
+        <span class='info-value' id='panelManufacturer'>---</span>
+    </div>
+    <div class='info-row'>
+        <span class='info-label'>Type</span>
+        <span class='info-value' id='panelType'>---</span>
+    </div>
+    <div class='info-row'>
+        <span class='info-label'>Variation</span>
+        <span class='info-value' id='panelVariation'>---</span>
+    </div>
+    <div class='info-row'>
+        <span class='info-label'>Registration</span>
+        <span class='info-value' id='panelRegistrationInfo'>---</span>
+    </div>
+</div>
         
         <div class='panel-section'>
             <div class='section-title'>Flight Data</div>
@@ -941,15 +941,15 @@ function updateFlightPathLine(uniqueId) {
 }
 
 function openPanel(aircraft) {
-            const panel = document.getElementById('infoPanel');
-            
-            // Update panel content
-            document.getElementById('panelCallsign').textContent = aircraft.atcId;
-            document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-            document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || aircraft.manufacturer || '---';
-            document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.type || '---';
-            document.getElementById('panelVariation').textContent = aircraft.ui_variation || aircraft.variation || '---';
-            document.getElementById('panelAircraft').textContent = aircraft.atcModel;
+    const panel = document.getElementById('infoPanel');
+    
+    // Update panel content
+    document.getElementById('panelCallsign').textContent = aircraft.atcId;
+    document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
+    document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || '---';
+    document.getElementById('panelType').textContent = aircraft.atcModel || '---';
+    document.getElementById('panelVariation').textContent = aircraft.atcAirline || '---';
+    document.getElementById('panelRegistrationInfo').textContent = aircraft.atcId || '---';
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
             document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
             document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
@@ -4229,6 +4229,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
