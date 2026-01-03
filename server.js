@@ -885,9 +885,14 @@ marker.on('click', function(e) {
             aircraftMarkers.push(marker);
         }
 
-        // Update flight path line if this aircraft is selected
+// Update flight path line if this aircraft is selected
         if (selectedAircraftId === uniqueId) {
             updateFlightPathLine(uniqueId);
+            // Update panel status if panel is open for this aircraft
+            const panel = document.getElementById('infoPanel');
+            if (panel.classList.contains('open')) {
+                updatePanelStatus(ac.isPaused);
+            }
         }
     });
 
@@ -958,21 +963,25 @@ function openPanel(aircraft) {
     document.getElementById('panelType').textContent = aircraft.atcModel || '---';
     document.getElementById('panelVariation').textContent = aircraft.atcAirline || '---';
     document.getElementById('panelRegistrationInfo').textContent = aircraft.atcId || '---';
-            document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
-            document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
-            document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
-            
-            // Update status indicator
-            const statusElement = document.getElementById('panelStatus');
-            if (aircraft.isPaused) {
-                statusElement.innerHTML = '<span class="status-indicator paused"></span>Paused';
-            } else {
-                statusElement.innerHTML = '<span class="status-indicator active"></span>Active';
-            }
-            
-            // Show panel
-            panel.classList.add('open');
-        }
+    document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
+    document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
+    document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
+    
+    // Update status indicator
+    updatePanelStatus(aircraft.isPaused);
+    
+    // Show panel
+    panel.classList.add('open');
+}
+
+function updatePanelStatus(isPaused) {
+    const statusElement = document.getElementById('panelStatus');
+    if (isPaused) {
+        statusElement.innerHTML = '<span class="status-indicator paused"></span>Paused';
+    } else {
+        statusElement.innerHTML = '<span class="status-indicator active"></span>Active';
+    }
+}
 
         function closePanel() {
             const panel = document.getElementById('infoPanel');
@@ -4272,6 +4281,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
