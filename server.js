@@ -604,6 +604,22 @@ function getPublicMapHTML() {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.3; }
         }
+
+        .leaflet-control-custom a {
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    color: #666;
+    text-decoration: none;
+}
+
+.leaflet-control-custom a:hover {
+    background: #f4f4f4;
+    color: #167fac;
+}
         
 /* Keep original white popup style - don't override */
         
@@ -773,8 +789,8 @@ function initMap() {
     // Add custom "Go to Selected Aircraft" button
 const goToButton = L.control({ position: 'topright' });
 goToButton.onAdd = function() {
-    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="background: #167fac; color: white; padding: 5px 10px; text-decoration: none; display: block; font-size: 11px; font-weight: bold;">📍 Location</a>';
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
+    div.innerHTML = '<a href="#" title="Go to Selected Aircraft"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg></a>';
     div.onclick = function(e) {
         e.preventDefault();
         if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
@@ -971,9 +987,9 @@ function openPanel(aircraft) {
     // Update panel content
     document.getElementById('panelCallsign').textContent = aircraft.atcId;
     document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
-    document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || '---';
-    document.getElementById('panelType').textContent = aircraft.atcModel || '---';
-    document.getElementById('panelVariation').textContent = aircraft.atcAirline || '---';
+document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || '---';
+document.getElementById('panelType').textContent = aircraft.ui_type || aircraft.atcModel || '---';
+document.getElementById('panelVariation').textContent = aircraft.ui_variation || '---';
     document.getElementById('panelRegistrationInfo').textContent = aircraft.atcId || '---';
             document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
             document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
@@ -4289,6 +4305,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
