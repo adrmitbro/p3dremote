@@ -1917,12 +1917,12 @@ ws.onopen = () => {
         }
     };
 
-// More frequent pings to maintain connection - every 15 seconds
+    // Store the interval ID so we can clear it later
     pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping' }));
         }
-    }, 15000); // Changed from 20000 to 15000
+    }, 20000);
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -4001,7 +4001,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
 
 
 
