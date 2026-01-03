@@ -475,6 +475,122 @@ function getPublicMapHTML() {
         .user-aircraft {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
         }
+/* Flight info panel */
+.flight-info-panel {
+    position: absolute;
+    top: 80px;
+    left: 10px;
+    width: 340px;
+    max-height: calc(100vh - 100px);
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.8);
+    border: 2px solid #167fac;
+    z-index: 1000;
+    overflow: hidden;
+    display: none;
+}
+
+.flight-info-header {
+    background: #167fac;
+    padding: 12px 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flight-info-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+}
+
+.close-btn {
+    background: transparent;
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    line-height: 20px;
+}
+
+.close-btn:hover {
+    color: #ff0000;
+}
+
+.flight-info-content {
+    padding: 15px;
+    overflow-y: auto;
+    max-height: calc(100vh - 180px);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #333;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    color: #888;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.info-value {
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: right;
+}
+
+.route-display {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 15px 0;
+    border-bottom: 1px solid #333;
+}
+
+.route-airport {
+    font-size: 24px;
+    font-weight: bold;
+    color: #167fac;
+}
+
+.route-arrow {
+    color: #888;
+    font-size: 18px;
+}
+
+.status-paused {
+    background: #ff0000;
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+    display: inline-block;
+    margin-left: 8px;
+}
+
+@media (max-width: 768px) {
+    .flight-info-panel {
+        width: calc(100vw - 20px);
+        left: 10px;
+        right: 10px;
+    }
+}
+        
     </style>
 </head>
 <body>
@@ -488,7 +604,18 @@ function getPublicMapHTML() {
     
 
     
-    <div id='map'></div>
+<div id='map'></div>
+
+<!-- Flight Info Panel -->
+<div class='flight-info-panel' id='flightInfoPanel'>
+    <div class='flight-info-header'>
+        <h3 id='panelCallsign'>Aircraft Info</h3>
+        <button class='close-btn' onclick='closeFlightInfo()'>×</button>
+    </div>
+    <div class='flight-info-content' id='flightInfoContent'>
+        <!-- Content will be populated by JavaScript -->
+    </div>
+</div>
 
     <script>
 let map = null;
@@ -615,64 +742,49 @@ function updateMap() {
     allAircraft.forEach(ac => {
         const uniqueId = ac.uniqueId;
 
-// Store position in flight path
-if (!flightPaths.has(uniqueId)) {
-    // Initialize with server's flight path if available
-    flightPaths.set(uniqueId, ac.flightPath || []);
-}
-const path = flightPaths.get(uniqueId);
+        // Store position in flight path
+        if (!flightPaths.has(uniqueId)) {
+            flightPaths.set(uniqueId, ac.flightPath || []);
+        }
+        const path = flightPaths.get(uniqueId);
 
-// Only add if position has changed (avoid duplicates)
-const lastPos = path.length > 0 ? path[path.length - 1] : null;
-if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
-    path.push([ac.latitude, ac.longitude]);
-}
+        // Only add if position has changed
+        const lastPos = path.length > 0 ? path[path.length - 1] : null;
+        if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+            path.push([ac.latitude, ac.longitude]);
+        }
 
         if (markerMap.has(uniqueId)) {
             // Update existing marker
             const marker = markerMap.get(uniqueId);
             marker.setLatLng([ac.latitude, ac.longitude]);
-const isSelected = selectedAircraftId === uniqueId;
+            const isSelected = selectedAircraftId === uniqueId;
             marker.setIcon(createAircraftIcon(ac.heading, isSelected));
-            
-// Update popup content without closing it
-const popupContent = \`
-    <div style="min-width:200px">
-        <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-        <p style="margin:0;font-size:10px;color:#888;">ID: \${ac.uniqueId}</p>
-        <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-        <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-        <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-        <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
-
-    </div>
-\`;
-marker.getPopup().setContent(popupContent);
         } else {
             // Create new marker
             const marker = L.marker([ac.latitude, ac.longitude], { 
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-const popupContent = \`
-                <div style="min-width:200px">
-                    <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
-                    <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
-                    <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
-                    <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
-                    <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+            // Compact popup - just registration/ID
+            const popupContent = `
+                <div style="min-width:120px; text-align:center;">
+                    <h4 style="margin:0; font-size:14px;">${ac.atcId}</h4>
+                    <p style="margin:2px 0 0 0; font-size:10px; color:#888;">ID: ${ac.uniqueId}</p>
                 </div>
-            \`;
+            `;
 
             marker.bindPopup(popupContent, {
-                closeButton: true,
-                autoClose: false,
-                closeOnClick: false
+                closeButton: false,
+                autoClose: true,
+                closeOnClick: true,
+                offset: [0, -10]
             });
 
-            // Add click handler to show flight path
+            // Add click handler to show detailed flight info
             marker.on('click', function(e) {
                 L.DomEvent.stopPropagation(e);
+                showFlightInfo(ac);
                 toggleFlightPath(uniqueId);
             });
 
@@ -693,7 +805,6 @@ const popupContent = \`
             markerMap.delete(uniqueId);
             flightPaths.delete(uniqueId);
             
-            // Remove flight path line if exists
             if (pathLines.has(uniqueId)) {
                 map.removeLayer(pathLines.get(uniqueId));
                 pathLines.delete(uniqueId);
@@ -701,6 +812,7 @@ const popupContent = \`
             
             if (selectedAircraftId === uniqueId) {
                 selectedAircraftId = null;
+                closeFlightInfo();
             }
             
             const index = aircraftMarkers.indexOf(marker);
@@ -741,6 +853,70 @@ function updateFlightPathLine(uniqueId) {
     }).addTo(map);
 
     pathLines.set(uniqueId, polyline);
+}
+
+function showFlightInfo(aircraft) {
+    const panel = document.getElementById('flightInfoPanel');
+    const callsign = document.getElementById('panelCallsign');
+    const content = document.getElementById('flightInfoContent');
+    
+    callsign.textContent = aircraft.atcId || 'Unknown';
+    
+    let html = '';
+    
+    // Route display if available
+    if (aircraft.departureAirport || aircraft.destinationAirport) {
+        html += `
+            <div class='route-display'>
+                <div class='route-airport'>${aircraft.departureAirport || '???'}</div>
+                <div class='route-arrow'>→</div>
+                <div class='route-airport'>${aircraft.destinationAirport || '???'}</div>
+            </div>
+        `;
+    }
+    
+    // Flight info rows
+    html += `
+        <div class='info-row'>
+            <span class='info-label'>Registration</span>
+            <span class='info-value'>${aircraft.uniqueId}</span>
+        </div>
+        <div class='info-row'>
+            <span class='info-label'>Aircraft</span>
+            <span class='info-value'>${aircraft.atcModel}</span>
+        </div>
+        <div class='info-row'>
+            <span class='info-label'>Altitude</span>
+            <span class='info-value'>${Math.round(aircraft.altitude).toLocaleString()} ft</span>
+        </div>
+        <div class='info-row'>
+            <span class='info-label'>Ground Speed</span>
+            <span class='info-value'>${Math.round(aircraft.groundSpeed)} kts</span>
+        </div>
+        <div class='info-row'>
+            <span class='info-label'>Heading</span>
+            <span class='info-value'>${Math.round(aircraft.heading)}°</span>
+        </div>
+        <div class='info-row'>
+            <span class='info-label'>Status</span>
+            <span class='info-value'>${aircraft.isPaused ? '<span class="status-paused">PAUSED</span>' : 'Active'}</span>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+    panel.style.display = 'block';
+}
+
+function closeFlightInfo() {
+    const panel = document.getElementById('flightInfoPanel');
+    panel.style.display = 'none';
+    
+    // Hide flight path when closing panel
+    if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
+        map.removeLayer(pathLines.get(selectedAircraftId));
+        pathLines.delete(selectedAircraftId);
+        selectedAircraftId = null;
+    }
 }
 
         window.onload = initMap;
@@ -2376,18 +2552,14 @@ function updateAutopilotStatus(data) {
                 mapDragStart = null;
             });
             
-            map.on('click', function(e) {
-                if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
-                    return;
-                }
-                
-                selectedAircraft = null;
-                updateMap(userLat, userLon, userHeading);
-                updateNearbyAircraftList();
-                
-                const detailsPanel = document.getElementById('aircraftDetails');
-                detailsPanel.innerHTML = '<p>Click on an aircraft to view details</p>';
-            });
+// Hide flight path and panel when clicking on empty map area
+map.on('click', function(e) {
+    if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
+        return;
+    }
+    
+    closeFlightInfo();
+});
             
             map.on('moveend', function() {
                 const center = map.getCenter();
@@ -4001,6 +4173,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
