@@ -249,6 +249,10 @@ ws.on('message', (message) => {
             if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
               session.flightPath.push([lat, lon]);
             }
+            // MEMORY FIX: Limit flight path to last 1000 points
+if (session.flightPath.length > 2000) {
+  session.flightPath.shift(); // Remove oldest point
+}
           }
         }
         
@@ -766,6 +770,23 @@ function initMap() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
+    // Add custom "Go to Selected Aircraft" button
+const goToButton = L.control({ position: 'topright' });
+goToButton.onAdd = function() {
+    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
+    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="background: #167fac; color: white; padding: 5px 10px; text-decoration: none; display: block; font-size: 11px; font-weight: bold;">📍 Location</a>';
+    div.onclick = function(e) {
+        e.preventDefault();
+        if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
+            const marker = markerMap.get(selectedAircraftId);
+            const pos = marker.getLatLng();
+            map.setView([pos.lat, pos.lng], 10);
+        }
+    };
+    return div;
+};
+goToButton.addTo(map);
+
     connectWebSocket();
     setInterval(requestAircraft, 1000);
 
@@ -859,19 +880,23 @@ const isSelected = selectedAircraftId === uniqueId;
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-            // Simple popup with just callsign
-            marker.bindPopup(ac.atcId, {
-                closeButton: false,
-                autoClose: true,
-                closeOnClick: true
-            });
+// Simple popup with callsign and close button
+marker.bindPopup(ac.atcId, {
+    closeButton: true,
+    autoClose: false,
+    closeOnClick: false,
+    maxWidth: 150,
+    className: 'compact-popup'
+});
 
-            // Click opens side panel with full details
-            marker.on('click', function(e) {
-                L.DomEvent.stopPropagation(e);
-                openPanel(ac);
-                toggleFlightPath(uniqueId);
-            });
+// Click opens side panel with full details (NO auto-center)
+marker.on('click', function(e) {
+    L.DomEvent.stopPropagation(e);
+    selectedAircraftId = uniqueId; // Store selected aircraft
+    openPanel(ac);
+    toggleFlightPath(uniqueId);
+    // Removed map.setView() - no more auto-centering
+});
 
             markerMap.set(uniqueId, marker);
             aircraftMarkers.push(marker);
@@ -1621,6 +1646,23 @@ function getMobileAppHTML() {
             z-index: 1000;
         }
 
+        /* Compact popup style */
+.compact-popup .leaflet-popup-content-wrapper {
+    padding: 5px 10px;
+    font-size: 12px;
+    min-width: 80px;
+}
+
+.compact-popup .leaflet-popup-content {
+    margin: 5px;
+    font-weight: bold;
+}
+
+.compact-popup .leaflet-popup-close-button {
+    font-size: 16px;
+    padding: 2px 6px;
+}
+
         .ai-aircraft {
             filter: drop-shadow(0 1px 2px rgba(0,0,0,0.8));
             z-index: 900;
@@ -2272,6 +2314,11 @@ case 'control_required':
                     currentFlightData = data.data;
                     updateFlightData(data.data);
                     break;
+
+                    case 'pause_state_changed':
+    isPaused = data.isPaused;
+    updatePauseButton();
+    break;
                     
 case 'autopilot_state':
     console.log('Received autopilot_state:', data.data);
@@ -2358,6 +2405,19 @@ case 'autopilot_state':
                 updateMap(data.latitude, data.longitude, data.heading);
             }
         }
+
+        function updatePauseButton() {
+    const headerPauseBtn = document.getElementById('headerPauseBtn');
+    if (isPaused) {
+        // Play icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
+        headerPauseBtn.className = 'header-action-btn paused';
+    } else {
+        // Pause icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
+        headerPauseBtn.className = 'header-action-btn';
+    }
+}
 
 function updateAutopilotUI(data) {
     // Store autopilot state globally for PFD access
@@ -4229,6 +4289,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
