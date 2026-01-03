@@ -23,7 +23,7 @@ function getOnlineAircraft() {
     console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
       aircraft.push({
-        uniqueId: uniqueId.substring(0, 8),
+        uniqueId: uniqueId.substring(0, 9),
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
         heading: session.lastFlightData.heading || 0,
@@ -64,7 +64,7 @@ app.get('/remote', (req, res) => {
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log(`Terminating dead connection: ${ws.clientType} - ${ws.uniqueId}`);
+      console.log(`⚠️ Terminating dead connection: ${ws.clientType} - ${ws.uniqueId || 'unknown'}`);
       
       // Clean up session if PC disconnected
       if (ws.uniqueId && ws.clientType === 'pc') {
@@ -336,14 +336,35 @@ ws.on('close', () => {
         // Notify mobile clients
         session.mobileClients.forEach(client => {
           if (client.readyState === WebSocket.OPEN) {
-            client.send(JSON.stringify({ type: 'pc_offline' }));
+            try {
+              client.send(JSON.stringify({ type: 'pc_offline' }));
+            } catch (e) {
+              console.error('Error notifying mobile client:', e);
+            }
           }
         });
         
-        // Optional: Remove session entirely if no mobile clients are connected
-        if (session.mobileClients.size === 0) {
-          sessions.delete(ws.uniqueId);
-          console.log(`Session removed: ${ws.uniqueId}`);
+        // DON'T delete session - keep it for potential PC reconnect
+        // Session will be reused when PC reconnects with same uniqueId
+      }
+
+        else if (ws.clientType === 'mobile') {
+        session.mobileClients.delete(ws);
+        console.log(`Mobile disconnected from: ${ws.uniqueId}`);
+        
+        // Only clean up session if BOTH PC is offline AND no mobile clients remain
+        // AND session has been inactive for a while
+        if (!session.pcClient && session.mobileClients.size === 0) {
+          // Wait 5 minutes before deleting session (in case of quick reconnects)
+          setTimeout(() => {
+            if (sessions.has(ws.uniqueId)) {
+              const currentSession = sessions.get(ws.uniqueId);
+              if (!currentSession.pcClient && currentSession.mobileClients.size === 0) {
+                sessions.delete(ws.uniqueId);
+                console.log(`Session removed after timeout: ${ws.uniqueId}`);
+              }
+            }
+          }, 300000); // 5 minutes
         }
       }
       else if (ws.clientType === 'mobile') {
@@ -366,7 +387,8 @@ function getPublicMapHTML() {
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>P3D Live Flight Tracker</title>
+    <title>P3dradar24: Live Flight Tracker</title>
+    <link rel="icon" type="image/png" href="https://github.com/adrmitbro/p3dremote/blob/main/favicon.png?raw=true">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link href="https://fonts.cdnfonts.com/css/good-times-2" rel="stylesheet">
@@ -379,77 +401,74 @@ function getPublicMapHTML() {
             overflow: hidden;
         }
 .header {
-    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-    padding: 10px 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-    border-bottom: 2px solid #167fac;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 6px;
-}
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            padding: 10px 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 2px solid #167fac;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
 
 .header h1 { 
-    margin: 0;
-    padding: 0;
-    line-height: 0;
-}
-
-.header h1 img {
-    height: 50px;
-    width: auto;
-    display: block;
-}
+            margin: 0;
+            padding: 0;
+            line-height: 0;
+        }
+        
+        .header h1 img {
+            height: 50px;
+            width: auto;
+            display: block;
+        }
 .header-right {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    align-items: flex-end;
-}
-
+            display: flex;
+            flex-direction: row;
+            gap: 8px;
+            align-items: flex-end;
+        }
 .aircraft-count {
-    background: #167fac;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: bold;
-    white-space: nowrap;
-    color: #fff;
-}
+            background: #167fac;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            color: #fff;
+        }
+        .remote-btn {
+            background: #2d2d2d;
+            border: 1px solid #167fac;
+            color: #167fac;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: bold;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .remote-btn:hover {
+            background: #167fac;
+            color: white;
+        }
 
-.remote-btn {
-    background: #2d2d2d;
-    border: 1px solid #167fac;
-    color: #167fac;
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: bold;
-    text-decoration: none;
-    cursor: pointer;
-    transition: all 0.3s;
-    white-space: nowrap;
-}
-
-.remote-btn:hover {
-    background: #167fac;
-    color: white;
-}
-
-@media (max-width: 768px) {
-    .header {
-        padding: 8px 6px;
-        gap: 4px;
-    }
-    .remote-btn {
-        padding: 6px 8px;
-        font-size: 10px;
-    }
-    .aircraft-count {
-        padding: 6px 8px;
-        font-size: 9px;
-    }
-}
+        @media (max-width: 768px) {
+            .header {
+                padding: 8px 6px;
+                gap: 4px;
+            }
+            .remote-btn {
+                padding: 6px 8px;
+                font-size: 10px;
+            }
+            .aircraft-count {
+                padding: 6px 8px;
+                font-size: 9px;
+            }
+        }
         #map {
             height: calc(100vh - 70px);
         }
@@ -460,12 +479,15 @@ function getPublicMapHTML() {
 </head>
 <body>
 <div class='header'>
-    <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
-    <div class='header-right'>
-        <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
-        <a href='/remote' class='remote-btn'>Remote Control</a>
+<h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
+        <div class='header-right'>
+            <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
+            <a href='/remote' class='remote-btn'>Remote Control</a>
+        </div>
     </div>
-</div>
+    
+
+    
     <div id='map'></div>
 
     <script>
@@ -478,12 +500,14 @@ let flightPaths = new Map(); // Track flight paths by uniqueId
 let pathLines = new Map(); // Track polylines by uniqueId
 let selectedAircraftId = null; // Track which aircraft path is shown
 
-        function createAircraftIcon(heading) {
+function createAircraftIcon(heading, isSelected) {
+            const color = isSelected ? "#DC6969" : "#FFD700";
+            const size = isSelected ? 26 : 24;
             return L.divIcon({
-                html: \`<div class="user-aircraft" style="transform: rotate(\${heading}deg);"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="#FFD700" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+                html: \`<div class="user-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
                 className: '',
-                iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                iconSize: [size, size],
+                iconAnchor: [size/2, size/2]
             });
         }
 
@@ -494,10 +518,39 @@ function initMap() {
         zoomControl: true
     });
     
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Base layers
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
-        maxZoom: 18
-    }).addTo(map);
+        maxZoom: 19
+    });
+    
+    const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19
+    });
+    
+    const hybridLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Esri, Maxar, Earthstar Geographics',
+        maxZoom: 19
+    });
+    
+    const labelsLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}.png', {
+        attribution: '© CartoDB',
+        maxZoom: 19,
+        pane: 'shadowPane'
+    });
+    
+    // Add default layer
+    osmLayer.addTo(map);
+    
+    // Layer control
+    const baseMaps = {
+        "Street Map": osmLayer,
+        "Satellite": satelliteLayer,
+        "Satellite + Labels": L.layerGroup([hybridLayer, labelsLayer])
+    };
+    
+    L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -576,16 +629,19 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
             // Update existing marker
             const marker = markerMap.get(uniqueId);
             marker.setLatLng([ac.latitude, ac.longitude]);
-            marker.setIcon(createAircraftIcon(ac.heading));
+const isSelected = selectedAircraftId === uniqueId;
+            marker.setIcon(createAircraftIcon(ac.heading, isSelected));
             
 // Update popup content without closing it
 const popupContent = \`
     <div style="min-width:200px">
         <h4 style="margin:0 0 5px 0">\${ac.atcId}\${ac.isPaused ? ' <span style="color:#ff0000;font-style:italic;">(PAUSED)</span>' : ''}</h4>
+        <p style="margin:0;font-size:10px;color:#888;">ID: \${ac.uniqueId}</p>
         <p style="margin:0 0 5px 0">Aircraft: \${ac.atcModel}</p>
         <p style="margin:0 0 5px 0">Speed: \${Math.round(ac.groundSpeed)} kts</p>
         <p style="margin:0 0 5px 0">Altitude: \${Math.round(ac.altitude)} ft</p>
         <p style="margin:0">Heading: \${Math.round(ac.heading)}°</p>
+
     </div>
 \`;
 marker.getPopup().setContent(popupContent);
@@ -805,6 +861,7 @@ function getMobileAppHTML() {
 }
 .status.connected { background: #167fac; }
 .status.offline { background: #f44336; }
+
 
 .public-map-btn {
     background: #2d2d2d;
@@ -1110,7 +1167,7 @@ function getMobileAppHTML() {
         
         .aircraft-list-item.selected {
             background: rgba(255, 0, 0, 0.2);
-            border-left: 3px solid #ff0000;
+            border-left: 3px solid #DC6969;
         }
         
         .aircraft-callsign {
@@ -1355,6 +1412,7 @@ function getMobileAppHTML() {
     </style>
 </head>
 <body>
+
 <div class='header'>
     <h1>Prepar3D Remote</h1>
     <div class='header-right'>
@@ -1508,7 +1566,6 @@ function getMobileAppHTML() {
 <!-- Autopilot Tab -->
 <div class='tab-content'>
 <div id='controlPanel'>
-
         <div class='card'>
             <h3 style='margin-bottom: 10px;'>Summary</h3>
             <div class='summary-container'>
@@ -1857,12 +1914,12 @@ ws.onopen = () => {
         }
     };
 
-    // Store the interval ID so we can clear it later
+// More frequent pings to maintain connection - every 15 seconds
     pingInterval = setInterval(() => {
         if (ws && ws.readyState === WebSocket.OPEN) {
             ws.send(JSON.stringify({ type: 'ping' }));
         }
-    }, 20000);
+    }, 15000); // Changed from 20000 to 15000
 
     ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
@@ -1898,6 +1955,22 @@ case 'connected':
                 case 'error':
                     alert(data.message);
                     break;
+
+case 'pc_online':
+    console.log('🟢 PC came back online, re-requesting control');
+    updateStatus('connected');
+    
+    // Automatically re-request control when PC comes back
+    const savedPassword = localStorage.getItem('p3d_control_password');
+    if (savedPassword) {
+        setTimeout(() => {
+            ws.send(JSON.stringify({ 
+                type: 'request_control', 
+                password: savedPassword 
+            }));
+        }, 500);
+    }
+    break;                    
                     
 case 'control_granted':
     hasControl = true;
@@ -1905,10 +1978,14 @@ case 'control_granted':
     document.getElementById('mainApp').classList.remove('hidden');
     
     console.log('✅ Control access granted');
+
+    // Inside case 'control_granted':, ADD THIS LINE:
+localStorage.setItem('p3d_auth_fail_count', '0'); // Reset fail counter on success
     
     // RESTORE AUTOPAUSE AFTER GETTING CONTROL
     const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
     const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
+    
     
     if (savedAutopauseEnabled) {
         autopauseEnabled = true;
@@ -1932,7 +2009,16 @@ case 'control_granted':
 case 'auth_failed':
     console.error('❌ Authentication failed');
     alert('Wrong password! Please try again.');
-    localStorage.removeItem('p3d_control_password');
+    // DON'T clear saved password immediately - might be temporary server issue
+    // Only clear after 3 failed attempts
+    const failCount = parseInt(localStorage.getItem('p3d_auth_fail_count') || '0') + 1;
+    localStorage.setItem('p3d_auth_fail_count', failCount.toString());
+    
+    if (failCount >= 3) {
+        localStorage.removeItem('p3d_control_password');
+        localStorage.removeItem('p3d_auth_fail_count');
+        console.log('Cleared password after 3 failed attempts');
+    }
     
     // Stay on login screen
     document.getElementById('loginScreen').classList.remove('hidden');
@@ -2014,16 +2100,28 @@ case 'autopilot_state':
             }
 
 // Update header pause button
-const headerPauseBtn = document.getElementById('headerPauseBtn');
-if (data.isPaused) {
-    // Play icon
-    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
-    headerPauseBtn.className = 'header-action-btn paused';
-} else {
-    // Pause icon
-    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
-    headerPauseBtn.className = 'header-action-btn';
-}
+    const headerPauseBtn = document.getElementById('headerPauseBtn');
+    if (data.isPaused) {
+        // Play icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
+        headerPauseBtn.className = 'header-action-btn paused';
+    } else {
+        // Pause icon
+        headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
+        headerPauseBtn.className = 'header-action-btn';
+    }
+
+    // Update autopilot tab pause button
+    const btnPause = document.getElementById('btnPause');
+    if (btnPause) {
+        if (data.isPaused) {
+            btnPause.textContent = '▶️ Resume';
+            btnPause.className = 'btn btn-warning';
+        } else {
+            btnPause.textContent = '⏸️ Pause';
+            btnPause.className = 'btn btn-secondary';
+        }
+    }
 
             if (map && data.latitude && data.longitude) {
                 updateMap(data.latitude, data.longitude, data.heading);
@@ -2034,6 +2132,7 @@ function updateAutopilotUI(data) {
     // Store autopilot state globally for PFD access
     window.lastAutopilotState = data;
     
+    // Force update all toggle states
     updateToggle('apMaster', data.master);
             updateToggle('apAlt', data.altitude);
             updateToggle('apHdg', data.heading);
@@ -2045,7 +2144,7 @@ function updateAutopilotUI(data) {
             updateToggle('gear', data.gear, data.gear ? 'DOWN' : 'UP');
             updateToggle('parkingBrake', data.parkingBrake, data.parkingBrake ? 'ON' : 'OFF');
             
-            document.getElementById('flapsPos').textContent = Math.round(data.flaps) + '%';
+             document.getElementById('flapsPos').textContent = Math.round(data.flaps) + '%';
             
             const spoilersBtn = document.getElementById('spoilers');
             const spoilersActive = data.spoilers > 10;
@@ -2071,6 +2170,7 @@ function updateAutopilotUI(data) {
 const anyEngineRunning = data.engine1N2 > 10 || data.engine2N2 > 10 || data.engine3N2 > 10 || data.engine4N2 > 10;
 updateToggle('allEngines', anyEngineRunning, anyEngineRunning ? 'ON' : 'OFF');
 
+
 // Update engine indicators
 updateEngineIndicators(data);
             
@@ -2079,9 +2179,11 @@ updateEngineIndicators(data);
         }
 
 function updateEngineIndicators(data) {
-    // Determine number of engines
-    const hasEngine3 = data.engine3N2 !== undefined && data.engine3N2 > 0;
-    const hasEngine4 = data.engine4N2 !== undefined && data.engine4N2 > 0;
+    // More reliable engine detection - check if ANY data exists for engines 3/4
+    const hasEngine3 = (data.engine3N2 !== undefined && data.engine3N2 !== null) || 
+                       (data.engine3N1 !== undefined && data.engine3N1 !== null);
+    const hasEngine4 = (data.engine4N2 !== undefined && data.engine4N2 !== null) || 
+                       (data.engine4N1 !== undefined && data.engine4N1 !== null);
     const numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
     
     // Get or create indicator container
@@ -2209,15 +2311,8 @@ function updateAutopilotStatus(data) {
             btn.textContent = text || (state ? 'ON' : 'OFF');
         }
 
-        // Debug logging
-console.log('Light states:', {
-    strobe: data.lightStrobe,
-    landing: data.lightLanding,
-    beacon: data.lightBeacon
-});
-
         function createUserAircraftIcon(heading, isSelected) {
-            const color = isSelected ? "#FF0000" : "#FFD700";
+            const color = isSelected ? "#DC6969" : "#FFD700";
             const size = isSelected ? 26 : 24;
             
             return L.divIcon({
@@ -2229,7 +2324,7 @@ console.log('Light states:', {
         }
 
         function createAIAircraftIcon(heading, isSelected) {
-            const color = isSelected ? "#FF0000" : "#FFFFFF";
+            const color = isSelected ? "#DC6969" : "#FFFFFF";
             const size = isSelected ? 18 : 16;
             
             return L.divIcon({
@@ -2558,20 +2653,21 @@ function updateUserAircraftDetails() {
             ws.send(JSON.stringify({ type: 'pause_toggle' }));
         }
 
-        function saveGame() {
-            const saveBtn = document.querySelector('button[onclick="saveGame()"]');
-            if (saveBtn) {
-                saveBtn.disabled = true;
-                saveBtn.textContent = '💾 Saving...';
-            }
-
-            const headerSaveBtn = document.getElementById('headerSaveBtn');
-if (headerSaveBtn) {
-    headerSaveBtn.disabled = true;
-    headerSaveBtn.classList.add('saving');
-    headerSaveBtn.textContent = '...';
-}
-            
+function saveGame() {
+    const saveBtn = document.querySelector('button[onclick="saveGame()"]');
+    const headerSaveBtn = document.getElementById('headerSaveBtn');
+    
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = '💾 Saving...';
+    }
+    
+    if (headerSaveBtn) {
+        headerSaveBtn.disabled = true;
+        headerSaveBtn.classList.add('saving');
+        headerSaveBtn.textContent = '...';
+    }
+    
     ws.send(JSON.stringify({ type: 'save_game' }));
     
     showSaveProgress();
@@ -2642,6 +2738,14 @@ if (headerSaveBtn) {
             } else {
                 content.innerHTML = '<div style="font-size: 40px; margin-bottom: 15px;">❌</div><h3 style="margin: 0 0 10px 0; color: #f44336;">Save Failed</h3><div style="color: #ccc; font-size: 14px;">Please try again</div>';
             }
+
+            // Reset header save button immediately on success/failure
+    const headerSaveBtn = document.getElementById('headerSaveBtn');
+    if (headerSaveBtn) {
+        headerSaveBtn.disabled = false;
+        headerSaveBtn.classList.remove('saving');
+        headerSaveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3" y="0" width="8" height="5" fill="currentColor"/><rect x="3" y="8" width="8" height="4" fill="currentColor"/></svg>';
+    }
             
             setTimeout(() => {
                 overlay.remove();
@@ -3378,8 +3482,11 @@ function drawEICAS() {
     const apData = window.lastAutopilotState || {};
     
     // Auto-detect number of engines
-    const hasEngine3 = apData.engine3N1 !== undefined && apData.engine3N1 > 0;
-    const hasEngine4 = apData.engine4N1 !== undefined && apData.engine4N1 > 0;
+// More reliable engine detection for EICAS
+    const hasEngine3 = (apData.engine3N1 !== undefined && apData.engine3N1 !== null) || 
+                       (apData.engine3N2 !== undefined && apData.engine3N2 !== null);
+    const hasEngine4 = (apData.engine4N1 !== undefined && apData.engine4N1 !== null) || 
+                       (apData.engine4N2 !== undefined && apData.engine4N2 !== null);
     numEngines = hasEngine4 ? 4 : (hasEngine3 ? 3 : 2);
     
     if (eicasPage === 0) {
@@ -3891,6 +3998,40 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
