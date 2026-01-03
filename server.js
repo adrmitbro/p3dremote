@@ -770,11 +770,20 @@ function initMap() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Add custom "Go to Selected Aircraft" button
+// Add custom "Go to Selected Aircraft" button
 const goToButton = L.control({ position: 'topright' });
 goToButton.onAdd = function() {
     const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="background: #167fac; color: white; padding: 5px 10px; text-decoration: none; display: block; font-size: 11px; font-weight: bold;">📍 Location</a>';
+    div.innerHTML = `<a href="#" title="Go to Selected Aircraft" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; text-decoration: none; background: white; color: #333;">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="8" cy="8" r="3" fill="#167fac" stroke="#333" stroke-width="1"/>
+            <circle cx="8" cy="8" r="6" stroke="#167fac" stroke-width="1.5" fill="none"/>
+            <line x1="8" y1="1" x2="8" y2="3" stroke="#167fac" stroke-width="1.5"/>
+            <line x1="8" y1="13" x2="8" y2="15" stroke="#167fac" stroke-width="1.5"/>
+            <line x1="1" y1="8" x2="3" y2="8" stroke="#167fac" stroke-width="1.5"/>
+            <line x1="13" y1="8" x2="15" y2="8" stroke="#167fac" stroke-width="1.5"/>
+        </svg>
+    </a>`;
     div.onclick = function(e) {
         e.preventDefault();
         if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
@@ -4289,6 +4298,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
