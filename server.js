@@ -1681,13 +1681,13 @@ function getMobileAppHTML() {
 <div class='header'>
     <h1>Prepar3D Remote</h1>
     <div class='header-right'>
-        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>
+        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()' disabled>
             <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
                 <rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/>
                 <rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/>
             </svg>
         </button>
-        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()'>
+        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()' disabled>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                 <rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
                 <rect x="3" y="0" width="8" height="5" fill="currentColor"/>
@@ -2241,6 +2241,10 @@ case 'control_granted':
     hasControl = true;
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainApp').classList.remove('hidden');
+    
+    // Enable header buttons
+    document.getElementById('headerPauseBtn').disabled = false;
+    document.getElementById('headerSaveBtn').disabled = false;
     
     console.log('✅ Control access granted');
 
@@ -4281,6 +4285,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
