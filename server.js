@@ -379,56 +379,77 @@ function getPublicMapHTML() {
             overflow: hidden;
         }
 .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 10px 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 2px solid #167fac;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 8px;
-        }
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 10px 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    border-bottom: 2px solid #167fac;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
+}
 
-        .header h1 { 
-            font-size: 13px;
-            font-family: 'Good Times', sans-serif;
-            white-space: nowrap;
-            line-height: 1.2;
-            flex-shrink: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+.header h1 { 
+    margin: 0;
+    padding: 0;
+    line-height: 0;
+}
+
+.header h1 img {
+    height: 50px;
+    width: auto;
+    display: block;
+}
 .header-right {
-            display: flex;
-            flex-direction: row;
-            gap: 8px;
-            align-items: flex-end;
-        }
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: flex-end;
+}
+
 .aircraft-count {
-            background: #167fac;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
-        .remote-btn {
-            background: #2d2d2d;
-            border: 1px solid #167fac;
-            color: #167fac;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: bold;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .remote-btn:hover {
-            background: #167fac;
-            color: white;
-        }
+    background: #167fac;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    color: #fff;
+}
+
+.remote-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.remote-btn:hover {
+    background: #167fac;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 8px 6px;
+        gap: 4px;
+    }
+    .remote-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    .aircraft-count {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+}
         #map {
             height: calc(100vh - 70px);
         }
@@ -438,13 +459,13 @@ function getPublicMapHTML() {
     </style>
 </head>
 <body>
-    <div class='header'>
-        <h1>P3D Live Flight Tracker</h1>
-        <div class='header-right'>
-            <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
-            <a href='/remote' class='remote-btn'>Remote Control</a>
-        </div>
+<div class='header'>
+    <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
+    <div class='header-right'>
+        <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
+        <a href='/remote' class='remote-btn'>Remote Control</a>
     </div>
+</div>
     <div id='map'></div>
 
     <script>
@@ -688,35 +709,156 @@ function getMobileAppHTML() {
             color: white;
             overflow-x: hidden;
         }
-        .header {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            padding: 15px 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-            border-bottom: 2px solid #167fac;
-        }
-.header h1 { 
-            font-size: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-family: 'Good Times', sans-serif;
-        }
-        .status {
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-top: 5px;
-            display: inline-block;
-        }
-        .status.connected { background: #167fac; color: #fff; }
-        .status.offline { background: #f44336; color: white; }
-.status.paused { 
-    background: #800000; 
-    color: #fff;
-    display: none;
+.header {
+    background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+    padding: 10px 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    border-bottom: 2px solid #167fac;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 6px;
 }
-        .status.paused.visible { display: inline-block; }
+
+.header h1 { 
+    margin: 0;
+    padding: 0;
+    line-height: 50px;
+    font-size: 20px;
+    font-family: 'Good Times', sans-serif;
+}
+
+.header-center {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.header-action-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.3s;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+}
+
+.header-action-btn svg {
+    display: block;
+}
+
+.header-action-btn:hover:not(:disabled) {
+    background: #167fac;
+    color: white;
+}
+
+.header-action-btn:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.header-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.header-action-btn.saving {
+    font-size: 11px;
+    font-weight: bold;
+    padding: 6px 8px;
+}
+
+.header-action-btn.paused {
+    background: #800000;
+    border-color: #800000;
+    color: #fff;
+}
+
+.header-action-btn.paused:hover:not(:disabled) {
+    background: #a00000;
+    border-color: #a00000;
+}
+
+.header-right {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+}
+
+.status {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: bold;
+    white-space: nowrap;
+    color: #fff;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    box-sizing: border-box;
+}
+.status.connected { background: #167fac; }
+.status.offline { background: #f44336; }
+
+.public-map-btn {
+    background: #2d2d2d;
+    border: 1px solid #167fac;
+    color: #167fac;
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: bold;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    white-space: nowrap;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+}
+.public-map-btn:hover {
+    background: #167fac;
+    color: white;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 8px 6px;
+        gap: 4px;
+    }
+    .header h1 {
+        font-size: 16px;
+    }
+    .header-action-btn {
+        padding: 6px 8px;
+        min-width: 32px;
+        height: 26px;
+    }
+    .header-action-btn svg {
+        width: 10px;
+        height: 12px;
+    }
+    .header-action-btn.saving {
+        font-size: 10px;
+        font-weight: bold;
+        padding: 6px 6px;
+        min-width: 28px;
+    }
+    .public-map-btn {
+        padding: 6px 8px;
+        font-size: 10px;
+    }
+    .status {
+        padding: 6px 8px;
+        font-size: 9px;
+    }
+}
         
         .login-screen {
             padding: 20px;
@@ -1214,11 +1356,25 @@ function getMobileAppHTML() {
 </head>
 <body>
 <div class='header'>
-        <h1>Prepar3D Remote</h1>
-        <a href='/' style='background: #2d2d2d; border: 1px solid #167fac; color: #167fac; padding: 8px 16px; border-radius: 8px; font-size: 12px; font-weight: bold; text-decoration: none;'>← Public Map</a>
+    <h1>Prepar3D Remote</h1>
+    <div class='header-right'>
+        <button class='header-action-btn' id='headerPauseBtn' onclick='togglePause()'>
+            <svg width="12" height="14" viewBox="0 0 12 14" fill="none">
+                <rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/>
+                <rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/>
+            </svg>
+        </button>
+        <button class='header-action-btn' id='headerSaveBtn' onclick='saveGame()'>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/>
+                <rect x="3" y="0" width="8" height="5" fill="currentColor"/>
+                <rect x="3" y="8" width="8" height="4" fill="currentColor"/>
+            </svg>
+        </button>
         <div id='statusBadge' class='status offline'>Offline</div>
-        <div id='pauseBadge' class='status paused'>Paused</div>
+        <a href='/' class='public-map-btn'>Public Map</a>
     </div>
+</div>
 
     <div id='loginScreen' class='login-screen'>
         <div class='login-card'>
@@ -1839,21 +1995,17 @@ case 'autopilot_state':
                 document.getElementById('ete').textContent = 'Total ETE: --';
             }
 
-            const pauseBadge = document.getElementById('pauseBadge');
-            if (data.isPaused) {
-                pauseBadge.classList.add('visible');
-            } else {
-                pauseBadge.classList.remove('visible');
-            }
-
-            const btnPause = document.getElementById('btnPause');
-            if (data.isPaused) {
-                btnPause.textContent = '▶️ Resume';
-                btnPause.className = 'btn btn-warning';
-            } else {
-                btnPause.textContent = '⏸️ Pause';
-                btnPause.className = 'btn btn-secondary';
-            }
+// Update header pause button
+const headerPauseBtn = document.getElementById('headerPauseBtn');
+if (data.isPaused) {
+    // Play icon
+    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><path d="M0 0L12 7L0 14V0Z" fill="currentColor"/></svg>';
+    headerPauseBtn.className = 'header-action-btn paused';
+} else {
+    // Pause icon
+    headerPauseBtn.innerHTML = '<svg width="12" height="14" viewBox="0 0 12 14" fill="none"><rect x="0" y="0" width="4" height="14" rx="1" fill="currentColor"/><rect x="8" y="0" width="4" height="14" rx="1" fill="currentColor"/></svg>';
+    headerPauseBtn.className = 'header-action-btn';
+}
 
             if (map && data.latitude && data.longitude) {
                 updateMap(data.latitude, data.longitude, data.heading);
@@ -2396,27 +2548,42 @@ function unlockControls() {
                 saveBtn.disabled = true;
                 saveBtn.textContent = '💾 Saving...';
             }
+
+            const headerSaveBtn = document.getElementById('headerSaveBtn');
+if (headerSaveBtn) {
+    headerSaveBtn.disabled = true;
+    headerSaveBtn.classList.add('saving');
+    headerSaveBtn.textContent = '...';
+}
             
-            ws.send(JSON.stringify({ type: 'save_game' }));
-            
-            showSaveProgress();
-            
-            let countdown = 60;
-            const disableInterval = setInterval(() => {
-                countdown--;
-                if (saveBtn) {
-                    saveBtn.textContent = '💾 Wait ' + countdown + 's';
-                }
-                
-                if (countdown <= 0) {
-                    clearInterval(disableInterval);
-                    if (saveBtn) {
-                        saveBtn.disabled = false;
-                        saveBtn.textContent = '💾 Save Flight';
-                    }
-                }
-            }, 1000);
+    ws.send(JSON.stringify({ type: 'save_game' }));
+    
+    showSaveProgress();
+    
+    let countdown = 60;
+    const disableInterval = setInterval(() => {
+        countdown--;
+        if (saveBtn) {
+            saveBtn.textContent = '💾 Wait ' + countdown + 's';
         }
+        if (headerSaveBtn) {
+            headerSaveBtn.textContent = countdown;
+        }
+        
+        if (countdown <= 0) {
+            clearInterval(disableInterval);
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                saveBtn.textContent = '💾 Save Flight';
+            }
+            if (headerSaveBtn) {
+                headerSaveBtn.disabled = false;
+                headerSaveBtn.classList.remove('saving');
+                headerSaveBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="0" y="0" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1.5" fill="none"/><rect x="3" y="0" width="8" height="5" fill="currentColor"/><rect x="3" y="8" width="8" height="4" fill="currentColor"/></svg>';
+            }
+        }
+    }, 1000);
+}
 
         function showSaveProgress() {
             const overlay = document.createElement('div');
