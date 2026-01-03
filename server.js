@@ -1376,16 +1376,17 @@ function getMobileAppHTML() {
     </div>
 </div>
 
-    <div id='loginScreen' class='login-screen'>
-        <div class='login-card'>
-            <h2>Connect to Simulator</h2>
-            <div class='info-box'>
-                Enter your Unique ID from PC Server
-            </div>
-            <input type='text' id='uniqueId' placeholder='Unique ID' autocapitalize='off'>
-            <button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
+<div id='loginScreen' class='login-screen'>
+    <div class='login-card'>
+        <h2>Connect to Simulator</h2>
+        <div class='info-box'>
+            Enter your Unique ID and Password from PC Server
         </div>
+        <input type='text' id='uniqueId' placeholder='Unique ID' autocapitalize='off'>
+        <input type='password' id='loginPassword' placeholder='Password'>
+        <button class='btn btn-primary' onclick='connectToSim()'>Connect</button>
     </div>
+</div>
 
     <div id='mainApp' class='hidden'>
 <div class='tabs'>
@@ -1506,19 +1507,7 @@ function getMobileAppHTML() {
 
 <!-- Autopilot Tab -->
 <div class='tab-content'>
-    <div id='controlLock' class='card'>
-        <div class='info-box'>🔒 Enter password to access controls</div>
-        <input type='password' id='controlPassword' placeholder='Password'>
-        <button class='btn btn-primary' onclick='unlockControls()'>Unlock Controls</button>
-    </div>
-    
-    <div id='controlPanel' class='hidden'>
-        <div class='card'>
-            <div class='btn-group'>
-                <button class='btn btn-secondary' id='btnPause' onclick='togglePause()'>⏸️ Pause</button>
-                <button class='btn btn-primary' onclick='saveGame()'>💾 Save Flight</button>
-            </div>
-        </div>
+<div id='controlPanel'>
 
         <div class='card'>
             <h3 style='margin-bottom: 10px;'>Summary</h3>
@@ -1808,10 +1797,20 @@ function switchTab(index) {
 
 function connectToSim() {
     uniqueId = document.getElementById('uniqueId').value.trim();
+    const password = document.getElementById('loginPassword').value.trim();
+    
     if (!uniqueId) {
         alert('Please enter your Unique ID');
         return;
     }
+    
+    if (!password) {
+        alert('Please enter your password');
+        return;
+    }
+    
+    // Store password for later use
+    localStorage.setItem('p3d_control_password', password);
     
     // Clear old ping interval if exists
     if (pingInterval) {
@@ -1824,11 +1823,22 @@ function connectToSim() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     ws = new WebSocket(protocol + '//' + window.location.host);
     
-    ws.onopen = () => {
+ws.onopen = () => {
+    ws.send(JSON.stringify({ 
+        type: 'connect_mobile',
+        uniqueId: uniqueId
+    }));
+    
+    // Get stored password (in case of reconnect)
+    const storedPassword = localStorage.getItem('p3d_control_password') || password;
+    
+    // Automatically request control access with password
+    setTimeout(() => {
         ws.send(JSON.stringify({ 
-            type: 'connect_mobile',
-            uniqueId: uniqueId
+            type: 'request_control', 
+            password: storedPassword 
         }));
+    }, 500);
                 // RESTORE AUTOPAUSE SETTINGS AFTER RECONNECT
         const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
         const savedAutopauseDistance = parseInt(localStorage.getItem('p3d_autopause_distance')) || 100;
@@ -1891,8 +1901,10 @@ case 'connected':
                     
 case 'control_granted':
     hasControl = true;
-    document.getElementById('controlLock').classList.add('hidden');
-    document.getElementById('controlPanel').classList.remove('hidden');
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('mainApp').classList.remove('hidden');
+    
+    console.log('✅ Control access granted');
     
     // RESTORE AUTOPAUSE AFTER GETTING CONTROL
     const savedAutopauseEnabled = localStorage.getItem('p3d_autopause_enabled') === 'true';
@@ -1918,20 +1930,26 @@ case 'control_granted':
     break;
                     
 case 'auth_failed':
-    alert('Wrong password!');
-    // Clear saved password since it was wrong
+    console.error('❌ Authentication failed');
+    alert('Wrong password! Please try again.');
     localStorage.removeItem('p3d_control_password');
-    document.getElementById('controlPassword').value = '';
+    
+    // Stay on login screen
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    // Clear password field
+    document.getElementById('loginPassword').value = '';
     break;
                     
-                case 'control_required':
-                    if (document.getElementById('controlLock').classList.contains('hidden')) {
-                        document.getElementById('controlLock').classList.remove('hidden');
-                        document.getElementById('controlPanel').classList.add('hidden');
-                        document.getElementById('controlPassword').value = '';
-                        alert(data.message);
-                    }
-                    break;
+case 'control_required':
+    // Kick user back to login screen
+    alert(data.message);
+    hasControl = false;
+    document.getElementById('loginScreen').classList.remove('hidden');
+    document.getElementById('mainApp').classList.add('hidden');
+    document.getElementById('loginPassword').value = '';
+    localStorage.removeItem('p3d_control_password');
+    break;
                     
                 case 'flight_data':
                     currentFlightData = data.data;
@@ -2190,6 +2208,13 @@ function updateAutopilotStatus(data) {
             btn.className = 'toggle-btn ' + (state ? 'on' : 'off');
             btn.textContent = text || (state ? 'ON' : 'OFF');
         }
+
+        // Debug logging
+console.log('Light states:', {
+    strobe: data.lightStrobe,
+    landing: data.lightLanding,
+    beacon: data.lightBeacon
+});
 
         function createUserAircraftIcon(heading, isSelected) {
             const color = isSelected ? "#FF0000" : "#FFD700";
@@ -2528,15 +2553,6 @@ function updateUserAircraftDetails() {
             }
         }
 
-function unlockControls() {
-    const password = document.getElementById('controlPassword').value;
-    ws.send(JSON.stringify({ type: 'request_control', password }));
-    
-    // Save password to localStorage for next time
-    if (password) {
-        localStorage.setItem('p3d_control_password', password);
-    }
-}
 
         function togglePause() {
             ws.send(JSON.stringify({ type: 'pause_toggle' }));
@@ -3852,7 +3868,7 @@ window.onload = () => {
     
     const savedPassword = localStorage.getItem('p3d_control_password');
     if (savedPassword) {
-        document.getElementById('controlPassword').value = savedPassword;
+        document.getElementById('loginPassword').value = savedPassword;
     }
     
     // RESTORE AUTOPAUSE UI STATE
@@ -3875,6 +3891,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
