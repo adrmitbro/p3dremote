@@ -278,6 +278,15 @@ if (session.flightPath.length > 2000) {
           aircraft: getOnlineAircraft()
         }));
       }
+
+        else if (data.type === 'pause_state_changed') {
+    // Update session pause state
+    if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
+        const session = sessions.get(ws.uniqueId);
+        session.isPaused = data.isPaused;
+        console.log(`Pause state updated for ${ws.uniqueId}: isPaused=${data.isPaused}`);
+    }
+}
       
       else {
         // Route all other messages INCLUDING AUTOPAUSE
@@ -4307,6 +4316,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
