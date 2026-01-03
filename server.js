@@ -770,23 +770,6 @@ function initMap() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Add custom "Go to Selected Aircraft" button
-const goToButton = L.control({ position: 'topright' });
-goToButton.onAdd = function() {
-    const div = L.DomUtil.create('div', 'leaflet-bar leaflet-control');
-    div.innerHTML = '<a href="#" title="Go to Selected Aircraft" style="background: #167fac; color: white; padding: 5px 10px; text-decoration: none; display: block; font-size: 11px; font-weight: bold;">📍 Location</a>';
-    div.onclick = function(e) {
-        e.preventDefault();
-        if (selectedAircraftId && markerMap.has(selectedAircraftId)) {
-            const marker = markerMap.get(selectedAircraftId);
-            const pos = marker.getLatLng();
-            map.setView([pos.lat, pos.lng], 10);
-        }
-    };
-    return div;
-};
-goToButton.addTo(map);
-
     connectWebSocket();
     setInterval(requestAircraft, 1000);
 
@@ -4289,6 +4272,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
