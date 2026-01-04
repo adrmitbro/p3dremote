@@ -270,6 +270,27 @@ if (session.flightPath.length > 2000) {
           sessions.get(ws.uniqueId).lastFlightData = data.data;
         }
       }
+
+        else if (data.type === 'pc_closing') {
+    // PC is INTENTIONALLY disconnecting - clear everything
+    if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
+        const session = sessions.get(ws.uniqueId);
+        console.log(`PC intentionally closing: ${ws.uniqueId}`);
+        
+        // NOW we clear the flight path
+        session.lastFlightData = null;
+        session.flightPath = [];
+        
+        // Notify mobile clients
+        session.mobileClients.forEach(client => {
+            if (client.readyState === WebSocket.OPEN) {
+                try {
+                    client.send(JSON.stringify({ type: 'pc_offline' }));
+                } catch (e) {}
+            }
+        });
+    }
+}
       
       else if (data.type === 'request_online_aircraft') {
         ws.send(JSON.stringify({ 
@@ -4284,6 +4305,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
