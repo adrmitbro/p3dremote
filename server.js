@@ -37,7 +37,7 @@ aircraft.push({
         flightPath: session.flightPath || [],
         isPaused: session.isPaused || false,
   flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
-flightPlanDestination: session.lastFlightData.flightPlanDestination || null,
+flightPlanDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
 flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
 takeoffTime: session.lastFlightData.takeoffTime || null,
 totalDistance: session.lastFlightData.totalDistance || 0,
@@ -262,13 +262,26 @@ else if (data.type === 'flight_data') {
             }
           }
           
-          // NEW CODE - Extract final destination from waypoint list if available
-          if (data.data.waypointsList && data.data.waypointsList.length > 0) {
+          // ========== FIX 1 STARTS HERE ==========
+          // Extract origin and final destination from flight plan
+          if (data.data.flightPlanOrigin) {
+            session.lastFlightData.flightPlanOrigin = data.data.flightPlanOrigin;
+          }
+          
+          // Get final destination from waypoints list
+          if (data.data.waypointsList && Array.isArray(data.data.waypointsList) && data.data.waypointsList.length > 0) {
             const lastWaypoint = data.data.waypointsList[data.data.waypointsList.length - 1];
             if (lastWaypoint && lastWaypoint.id) {
               session.lastFlightData.finalDestination = lastWaypoint.id;
+              console.log('Final destination extracted:', lastWaypoint.id);
             }
           }
+          
+          // Fallback to flightPlanDestination if no waypoints
+          if (!session.lastFlightData.finalDestination && data.data.flightPlanDestination) {
+            session.lastFlightData.finalDestination = data.data.flightPlanDestination;
+          }
+          // ========== FIX 1 ENDS HERE ==========
         }
         
         const session = sessions.get(ws.uniqueId);
@@ -1135,30 +1148,33 @@ function openPanel(aircraft) {
 function updateRouteInfo(aircraft) {
     // Departure/Destination airports
     document.getElementById('departureCode').textContent = aircraft.flightPlanOrigin || '---';
-    document.getElementById('arrivalCode').textContent = aircraft.finalDestination || aircraft.flightPlanDestination || '---';
+    document.getElementById('arrivalCode').textContent = aircraft.flightPlanDestination || '---';
     
-    // Calculate times
-    const now = Date.now() / 1000; // Current time in Unix seconds
+    // Use sim time if available, otherwise use real time
+    const currentTime = aircraft.simTime || (Date.now() / 1000);
     
-    // SCHEDULED DEPARTURE: When flight plan was loaded
-    if (aircraft.flightPlanStartTime && aircraft.flightPlanStartTime > 0) {
+    // DEPARTURE TIME: Use takeoff time if airborne, otherwise use flight plan start time
+    if (aircraft.takeoffTime && aircraft.takeoffTime > 0) {
+        const departureTime = new Date(aircraft.takeoffTime * 1000);
+        document.getElementById('departureTime').textContent = 
+            departureTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    } else if (aircraft.flightPlanStartTime && aircraft.flightPlanStartTime > 0) {
         const scheduledDep = new Date(aircraft.flightPlanStartTime * 1000);
         document.getElementById('departureTime').textContent = 
-            scheduledDep.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            scheduledDep.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     } else {
         document.getElementById('departureTime').textContent = '--:--';
     }
     
-    // ESTIMATED ARRIVAL: Current time + remaining ETE
+    // ESTIMATED ARRIVAL: Current sim time + remaining ETE
     if (aircraft.ete && aircraft.ete > 0) {
-        const estimatedArrival = new Date((now + aircraft.ete) * 1000);
+        const estimatedArrival = new Date((currentTime + aircraft.ete) * 1000);
         document.getElementById('arrivalTime').textContent = 
-            estimatedArrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            estimatedArrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
     } else {
         document.getElementById('arrivalTime').textContent = '--:--';
     }
 }
-
 function updateFlightProgress(aircraft) {
     // Calculate progress based on distance
     // You'll need to implement this based on your data structure
@@ -4496,6 +4512,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
