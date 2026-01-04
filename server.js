@@ -9,8 +9,8 @@ const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 // WebSocket Keep-Alive Configuration
-const HEARTBEAT_INTERVAL = 30000; // 30 seconds (well under Render's 60s timeout)
-const CONNECTION_TIMEOUT = 65000; // 65 seconds
+const HEARTBEAT_INTERVAL = 60000; // 60 seconds (longer interval)
+const CONNECTION_TIMEOUT = 120000; // 2 minutes (more forgiving)
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData, isPaused }
 const sessions = new Map();
@@ -66,15 +66,16 @@ app.get('/remote', (req, res) => {
 // Heartbeat mechanism to keep connections alive
 const heartbeat = setInterval(() => {
   wss.clients.forEach((ws) => {
-    if (ws.isAlive === false) {
-      console.log(`⚠️ Terminating dead connection: ${ws.clientType} - ${ws.uniqueId || 'unknown'}`);
-      
-      // Clean up session if PC disconnected
-      if (ws.uniqueId && ws.clientType === 'pc') {
-        const session = sessions.get(ws.uniqueId);
-        if (session) {
-          // Clear flight data so aircraft disappears from public map
-          session.lastFlightData = null;
+if (ws.isAlive === false) {
+  console.log(`⚠️ Terminating dead connection: ${ws.clientType} - ${ws.uniqueId || 'unknown'}`);
+  
+  // Clean up session if PC disconnected
+  if (ws.uniqueId && ws.clientType === 'pc') {
+    const session = sessions.get(ws.uniqueId);
+    if (session) {
+      // DON'T clear flight data - just mark as disconnected
+      // session.lastFlightData = null;  // <-- COMMENTED OUT
+      session.pcClient = null; // Still clear the client reference
           
           // Notify mobile clients
           session.mobileClients.forEach(client => {
@@ -4464,6 +4465,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
