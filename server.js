@@ -35,8 +35,8 @@ aircraft.push({
         ui_type: session.lastFlightData.ui_type || null,
         ui_variation: session.lastFlightData.ui_variation || null,
         flightPath: session.flightPath || [],
-        isPaused: session.isPaused || false
-  flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
+        isPaused: session.isPaused || false,  // <-- ADD COMMA HERE!
+        flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
 flightPlanDestination: session.lastFlightData.flightPlanDestination || null,
 flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
 takeoffTime: session.lastFlightData.takeoffTime || null,
@@ -4500,6 +4500,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
