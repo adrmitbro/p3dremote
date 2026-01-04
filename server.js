@@ -409,8 +409,7 @@ if (ws.clientType === 'pc') {
 });
 
 function getPublicMapHTML() {
-  return \`<!DOCTYPE html>
-<html>
+return `<!DOCTYPE html><html>
 <head>
     <meta charset='UTF-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
@@ -1171,7 +1170,7 @@ function closePanel() {
 window.onload = initMap;
     </script>
 </body>
-</html>\`;
+</html>`;
 }
 
 function getMobileAppHTML() {
@@ -4465,6 +4464,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
