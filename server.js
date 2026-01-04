@@ -35,7 +35,13 @@ aircraft.push({
         ui_type: session.lastFlightData.ui_type || null,
         ui_variation: session.lastFlightData.ui_variation || null,
         flightPath: session.flightPath || [],
-        isPaused: session.isPaused || false
+        isPaused: session.isPaused || false,
+  flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
+flightPlanDestination: session.lastFlightData.flightPlanDestination || null,
+flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
+takeoffTime: session.lastFlightData.takeoffTime || null,
+totalDistance: session.lastFlightData.totalDistance || 0,
+ete: session.lastFlightData.ete || 0,
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -1145,41 +1151,29 @@ function updateRouteInfo(aircraft) {
 }
 
 function updateFlightProgress(aircraft) {
-    // Get total distance and remaining distance
-    const totalDistance = aircraft.totalDistance || 0; // in nautical miles
-    const ete = aircraft.ete || 0; // remaining time in seconds
-    const groundSpeed = aircraft.groundSpeed || 0; // knots
+    // Calculate progress based on distance
+    // You'll need to implement this based on your data structure
+    const totalDistance = aircraft.totalDistance || 0;
+    const remainingDistance = aircraft.distanceRemaining || 0;
     
-    // Calculate remaining distance from ETE and ground speed
-    let remainingDistance = 0;
-    if (ete > 0 && groundSpeed > 0) {
-        remainingDistance = (ete / 3600) * groundSpeed; // convert seconds to hours, multiply by speed
-    }
-    
-    // Calculate distance flown
-    const distanceFlown = totalDistance - remainingDistance;
-    
-    // Calculate progress percentage
     let progressPercent = 0;
-    if (totalDistance > 0 && distanceFlown >= 0) {
-        progressPercent = Math.min(100, Math.max(0, (distanceFlown / totalDistance) * 100));
+    if (totalDistance > 0) {
+        progressPercent = ((totalDistance - remainingDistance) / totalDistance) * 100;
     }
     
-    // Update progress bar
     document.getElementById('progressBar').style.width = progressPercent + '%';
     document.getElementById('progressPlane').style.left = progressPercent + '%';
     
-    // Update distance info (convert NM to KM)
-    document.getElementById('distanceFlown').textContent = 
-        Math.round(distanceFlown * 1.852) + ' km';
-    document.getElementById('distanceRemaining').textContent = 
-        Math.round(remainingDistance * 1.852) + ' km';
+    // Update distance info
+    const distanceFlown = totalDistance - remainingDistance;
+    document.getElementById('distanceFlown').textContent = Math.round(distanceFlown * 1.852) + ' km';
+    document.getElementById('distanceRemaining').textContent = Math.round(remainingDistance * 1.852) + ' km';
     
     // Calculate time remaining
-    const hours = Math.floor(ete / 3600);
-    const minutes = Math.floor((ete % 3600) / 60);
-    document.getElementById('timeRemaining').innerHTML = 
-        `<strong>${hours}h ${minutes}m</strong> remaining`;
+    const timeRemaining = aircraft.ete || 0;
+    const hours = Math.floor(timeRemaining / 3600);
+    const minutes = Math.floor((timeRemaining % 3600) / 60);
+    document.getElementById('timeRemaining').innerHTML = \`<strong>\${hours}h \${minutes}m</strong> remaining\`;
 }
 
 function updatePanelStatus(isPaused) {
