@@ -409,7 +409,7 @@ if (ws.clientType === 'pc') {
 });
 
 function getPublicMapHTML() {
-  return `<!DOCTYPE html>
+  return \`<!DOCTYPE html>
 <html>
 <head>
     <meta charset='UTF-8'>
@@ -427,7 +427,8 @@ function getPublicMapHTML() {
             color: white;
             overflow: hidden;
         }
-.header {
+        
+        .header {
             background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
             padding: 10px 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.5);
@@ -438,7 +439,7 @@ function getPublicMapHTML() {
             gap: 6px;
         }
 
-.header h1 { 
+        .header h1 { 
             margin: 0;
             padding: 0;
             line-height: 0;
@@ -449,13 +450,15 @@ function getPublicMapHTML() {
             width: auto;
             display: block;
         }
-.header-right {
+        
+        .header-right {
             display: flex;
             flex-direction: row;
             gap: 8px;
             align-items: flex-end;
         }
-.aircraft-count {
+        
+        .aircraft-count {
             background: #167fac;
             padding: 6px 12px;
             border-radius: 20px;
@@ -464,6 +467,7 @@ function getPublicMapHTML() {
             white-space: nowrap;
             color: #fff;
         }
+        
         .remote-btn {
             background: #2d2d2d;
             border: 1px solid #167fac;
@@ -477,6 +481,7 @@ function getPublicMapHTML() {
             transition: all 0.3s;
             white-space: nowrap;
         }
+        
         .remote-btn:hover {
             background: #167fac;
             color: white;
@@ -496,21 +501,23 @@ function getPublicMapHTML() {
                 font-size: 9px;
             }
         }
-#map {
+        
+        #map {
             height: calc(100vh - 70px);
             position: relative;
             z-index: 1;
         }
+        
         .user-aircraft {
             filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
         }
         
-        /* Slide-out panel styles */
+        /* Enhanced slide-out panel styles - FlightRadar24 inspired */
         .info-panel {
             position: fixed;
             top: 70px;
-            left: -400px;
-            width: 380px;
+            left: -420px;
+            width: 400px;
             height: calc(100vh - 70px);
             background: linear-gradient(to bottom, #1a1a1a 0%, #0d0d0d 100%);
             box-shadow: 2px 0 20px rgba(0,0,0,0.8);
@@ -526,7 +533,7 @@ function getPublicMapHTML() {
         
         .panel-header {
             padding: 20px;
-            border-bottom: 1px solid #333;
+            border-bottom: 2px solid #333;
             position: sticky;
             top: 0;
             background: #1a1a1a;
@@ -562,6 +569,102 @@ function getPublicMapHTML() {
         .aircraft-registration {
             font-size: 14px;
             color: #888;
+        }
+        
+        /* NEW: Route Section */
+        .route-section {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+            background: #0d0d0d;
+        }
+        
+        .route-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+        
+        .airport-box {
+            flex: 1;
+            text-align: center;
+        }
+        
+        .airport-code {
+            font-size: 24px;
+            font-weight: bold;
+            color: #167fac;
+            margin-bottom: 5px;
+        }
+        
+        .airport-time {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        
+        .airport-actual {
+            font-size: 16px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .route-arrow {
+            flex: 0 0 60px;
+            text-align: center;
+            color: #167fac;
+        }
+        
+        .route-arrow svg {
+            width: 40px;
+            height: 40px;
+        }
+        
+        /* NEW: Progress Bar */
+        .progress-section {
+            padding: 0 20px 20px 20px;
+            background: #0d0d0d;
+            border-bottom: 1px solid #333;
+        }
+        
+        .progress-bar-container {
+            position: relative;
+            height: 8px;
+            background: #222;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #167fac 0%, #1a8fd4 100%);
+            border-radius: 4px;
+            transition: width 1s ease;
+        }
+        
+        .progress-plane {
+            position: absolute;
+            top: -8px;
+            transform: translateX(-50%);
+            transition: left 1s ease;
+        }
+        
+        .progress-plane svg {
+            width: 20px;
+            height: 20px;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
+        }
+        
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        .progress-info strong {
+            color: #167fac;
         }
         
         .panel-section {
@@ -625,14 +728,12 @@ function getPublicMapHTML() {
             50% { opacity: 0.3; }
         }
         
-/* Keep original white popup style - don't override */
-        
         @media (max-width: 768px) {
             .info-panel {
                 width: 100%;
-                height: 50vh;
+                height: 60vh;
                 top: auto;
-                bottom: -50vh;
+                bottom: -60vh;
                 left: 0;
                 right: 0;
                 border-right: none;
@@ -657,6 +758,14 @@ function getPublicMapHTML() {
                 font-size: 24px;
             }
             
+            .airport-code {
+                font-size: 20px;
+            }
+            
+            .airport-actual {
+                font-size: 14px;
+            }
+            
             .panel-section {
                 padding: 15px;
             }
@@ -664,50 +773,88 @@ function getPublicMapHTML() {
     </style>
 </head>
 <body>
-<div class='header'>
-<h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
+    <div class='header'>
+        <h1><img src='https://github.com/adrmitbro/p3dremote/blob/main/p3d24.png?raw=true' alt='p3dradar24'></h1>
         <div class='header-right'>
             <div class='aircraft-count' id='aircraftCount'>0 aircraft online</div>
             <a href='/remote' class='remote-btn'>Remote Control</a>
         </div>
     </div>
     
-
+    <div id='map'></div>
     
-<div id='map'></div>
-    
-    <!-- Slide-out info panel -->
+    <!-- Enhanced slide-out info panel -->
     <div id='infoPanel' class='info-panel'>
-<div class='panel-header'>
-    <button class='panel-close' onclick='closePanel()'>×</button>
-    <div class='aircraft-callsign' id='panelCallsign'>---</div>
-    <div style='display: flex; justify-content: space-between; align-items: center;'>
-        <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
-        <div class='aircraft-registration' id='panelStatus'>
-            <span class='status-indicator active'></span>Active
+        <div class='panel-header'>
+            <button class='panel-close' onclick='closePanel()'>×</button>
+            <div class='aircraft-callsign' id='panelCallsign'>---</div>
+            <div style='display: flex; justify-content: space-between; align-items: center;'>
+                <div class='aircraft-registration' id='panelRegistration'>ID: ---</div>
+                <div class='aircraft-registration' id='panelStatus'>
+                    <span class='status-indicator active'></span>Active
+                </div>
+            </div>
         </div>
-    </div>
-</div>
         
-<div class='panel-section'>
-    <div class='section-title'>Aircraft Information</div>
-    <div class='info-row'>
-        <span class='info-label'>Manufacturer</span>
-        <span class='info-value' id='panelManufacturer'>---</span>
-    </div>
-    <div class='info-row'>
-        <span class='info-label'>Type</span>
-        <span class='info-value' id='panelType'>---</span>
-    </div>
-    <div class='info-row'>
-        <span class='info-label'>Variation</span>
-        <span class='info-value' id='panelVariation'>---</span>
-    </div>
-    <div class='info-row'>
-        <span class='info-label'>Registration</span>
-        <span class='info-value' id='panelRegistrationInfo'>---</span>
-    </div>
-</div>
+        <!-- NEW: Route Section -->
+        <div class='route-section'>
+            <div class='route-container'>
+                <div class='airport-box'>
+                    <div class='airport-code' id='departureCode'>---</div>
+                    <div class='airport-time'>SCHEDULED</div>
+                    <div class='airport-actual' id='departureTime'>--:--</div>
+                </div>
+                
+                <div class='route-arrow'>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </div>
+                
+                <div class='airport-box'>
+                    <div class='airport-code' id='arrivalCode'>---</div>
+                    <div class='airport-time'>ESTIMATED</div>
+                    <div class='airport-actual' id='arrivalTime'>--:--</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- NEW: Progress Section -->
+        <div class='progress-section'>
+            <div class='progress-bar-container'>
+                <div class='progress-bar-fill' id='progressBar' style='width: 0%'></div>
+                <div class='progress-plane' id='progressPlane' style='left: 0%'>
+                    <svg viewBox="0 0 24 24" fill="#FFD700">
+                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class='progress-info'>
+                <span id='distanceFlown'>--- km</span>
+                <span id='timeRemaining'>--- remaining</span>
+                <span id='distanceRemaining'>--- km</span>
+            </div>
+        </div>
+        
+        <div class='panel-section'>
+            <div class='section-title'>Aircraft Information</div>
+            <div class='info-row'>
+                <span class='info-label'>Manufacturer</span>
+                <span class='info-value' id='panelManufacturer'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Type</span>
+                <span class='info-value' id='panelType'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Variation</span>
+                <span class='info-value' id='panelVariation'>---</span>
+            </div>
+            <div class='info-row'>
+                <span class='info-label'>Registration</span>
+                <span class='info-value' id='panelRegistrationInfo'>---</span>
+            </div>
+        </div>
         
         <div class='panel-section'>
             <div class='section-title'>Flight Data</div>
@@ -731,21 +878,21 @@ let map = null;
 let aircraftMarkers = [];
 let ws = null;
 let allAircraft = [];
-let markerMap = new Map(); // Track markers by uniqueId
-let flightPaths = new Map(); // Track flight paths by uniqueId
-let pathLines = new Map(); // Track polylines by uniqueId
-let selectedAircraftId = null; // Track which aircraft path is shown
+let markerMap = new Map();
+let flightPaths = new Map();
+let pathLines = new Map();
+let selectedAircraftId = null;
 
 function createAircraftIcon(heading, isSelected) {
-            const color = isSelected ? "#DC6969" : "#FFD700";
-            const size = isSelected ? 26 : 24;
-            return L.divIcon({
-                html: \`<div class="user-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
-                className: '',
-                iconSize: [size, size],
-                iconAnchor: [size/2, size/2]
-            });
-        }
+    const color = isSelected ? "#DC6969" : "#FFD700";
+    const size = isSelected ? 26 : 24;
+    return L.divIcon({
+        html: \`<div class="user-aircraft \${isSelected ? 'selected' : ''}" style="transform: rotate(\${heading}deg);"><svg width="\${size}" height="\${size}" viewBox="0 0 24 24"><path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z" fill="\${color}" stroke="#000" stroke-width="0.5"/></svg></div>\`,
+        className: '',
+        iconSize: [size, size],
+        iconAnchor: [size/2, size/2]
+    });
+}
 
 function initMap() {
     map = L.map('map', {
@@ -754,7 +901,6 @@ function initMap() {
         zoomControl: true
     });
     
-    // Base layers
     const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 19
@@ -776,10 +922,8 @@ function initMap() {
         pane: 'shadowPane'
     });
     
-    // Add default layer
     osmLayer.addTo(map);
     
-    // Layer control
     const baseMaps = {
         "Street Map": osmLayer,
         "Satellite": satelliteLayer,
@@ -787,26 +931,20 @@ function initMap() {
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
-
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
     connectWebSocket();
     setInterval(requestAircraft, 1000);
 
-    // Hide flight path when clicking on empty map area
-// Hide flight path and close panel when clicking on empty map area
-map.on('click', function(e) {
-        // Close any open popups
+    map.on('click', function(e) {
         map.closePopup();
         
         if (e.originalEvent.target.closest('.leaflet-marker-icon')) {
             return;
         }
         
-        // Close panel
         closePanel();
         
-        // Hide any visible flight path
         if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
             map.removeLayer(pathLines.get(selectedAircraftId));
             pathLines.delete(selectedAircraftId);
@@ -815,33 +953,33 @@ map.on('click', function(e) {
     });
 }
 
-        function connectWebSocket() {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(protocol + '//' + window.location.host);
-            
-            ws.onopen = () => {
-                console.log('Connected');
-                requestAircraft();
-            };
+function connectWebSocket() {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(protocol + '//' + window.location.host);
+    
+    ws.onopen = () => {
+        console.log('Connected');
+        requestAircraft();
+    };
 
-            ws.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'online_aircraft') {
-                    allAircraft = data.aircraft;
-                    updateMap();
-                }
-            };
-
-            ws.onclose = () => {
-                setTimeout(connectWebSocket, 3000);
-            };
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'online_aircraft') {
+            allAircraft = data.aircraft;
+            updateMap();
         }
+    };
 
-        function requestAircraft() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
-            }
-        }
+    ws.onclose = () => {
+        setTimeout(connectWebSocket, 3000);
+    };
+}
+
+function requestAircraft() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'request_online_aircraft' }));
+    }
+}
 
 function updateMap() {
     if (!map) return;
@@ -849,81 +987,67 @@ function updateMap() {
     document.getElementById('aircraftCount').textContent = 
         allAircraft.length + ' aircraft online';
 
-    // Track which aircraft IDs are currently active
     const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
 
     allAircraft.forEach(ac => {
         const uniqueId = ac.uniqueId;
 
-// Store position in flight path
-if (!flightPaths.has(uniqueId)) {
-    // Initialize with server's flight path if available
-    flightPaths.set(uniqueId, ac.flightPath || []);
-}
-const path = flightPaths.get(uniqueId);
+        if (!flightPaths.has(uniqueId)) {
+            flightPaths.set(uniqueId, ac.flightPath || []);
+        }
+        const path = flightPaths.get(uniqueId);
 
-// Only add if position has changed (avoid duplicates)
-const lastPos = path.length > 0 ? path[path.length - 1] : null;
-if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
-    path.push([ac.latitude, ac.longitude]);
-}
+        const lastPos = path.length > 0 ? path[path.length - 1] : null;
+        if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+            path.push([ac.latitude, ac.longitude]);
+        }
 
-if (markerMap.has(uniqueId)) {
-            // Update existing marker
+        if (markerMap.has(uniqueId)) {
             const marker = markerMap.get(uniqueId);
             marker.setLatLng([ac.latitude, ac.longitude]);
-const isSelected = selectedAircraftId === uniqueId;
+            const isSelected = selectedAircraftId === uniqueId;
             marker.setIcon(createAircraftIcon(ac.heading, isSelected));
-            
-            // Update popup content - just callsign
             marker.getPopup().setContent(ac.atcId);
-} else {
-            // Create new marker
+        } else {
             const marker = L.marker([ac.latitude, ac.longitude], { 
                 icon: createAircraftIcon(ac.heading)
             }).addTo(map);
 
-// Simple popup with callsign and close button
-marker.bindPopup(ac.atcId, {
-    closeButton: true,
-    autoClose: false,
-    closeOnClick: false,
-    maxWidth: 150,
-    className: 'compact-popup'
-});
+            marker.bindPopup(ac.atcId, {
+                closeButton: true,
+                autoClose: false,
+                closeOnClick: false,
+                maxWidth: 150,
+                className: 'compact-popup'
+            });
 
-// Click opens side panel with full details (NO auto-center)
-marker.on('click', function(e) {
-    L.DomEvent.stopPropagation(e);
-    selectedAircraftId = uniqueId; // Store selected aircraft
-    openPanel(ac);
-    toggleFlightPath(uniqueId);
-    // Removed map.setView() - no more auto-centering
-});
+            marker.on('click', function(e) {
+                L.DomEvent.stopPropagation(e);
+                selectedAircraftId = uniqueId;
+                openPanel(ac);
+                toggleFlightPath(uniqueId);
+            });
 
             markerMap.set(uniqueId, marker);
             aircraftMarkers.push(marker);
         }
 
-// Update flight path line if this aircraft is selected
         if (selectedAircraftId === uniqueId) {
             updateFlightPathLine(uniqueId);
-            // Update panel status if panel is open for this aircraft
             const panel = document.getElementById('infoPanel');
             if (panel.classList.contains('open')) {
                 updatePanelStatus(ac.isPaused);
+                updateFlightProgress(ac);
             }
         }
     });
 
-    // Remove markers for aircraft that are no longer active
     markerMap.forEach((marker, uniqueId) => {
         if (!activeIds.has(uniqueId)) {
             map.removeLayer(marker);
             markerMap.delete(uniqueId);
             flightPaths.delete(uniqueId);
             
-            // Remove flight path line if exists
             if (pathLines.has(uniqueId)) {
                 map.removeLayer(pathLines.get(uniqueId));
                 pathLines.delete(uniqueId);
@@ -942,13 +1066,11 @@ marker.on('click', function(e) {
 }
 
 function toggleFlightPath(uniqueId) {
-    // Hide previous path if any
     if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
         map.removeLayer(pathLines.get(selectedAircraftId));
         pathLines.delete(selectedAircraftId);
     }
     
-    // Show new path
     selectedAircraftId = uniqueId;
     updateFlightPathLine(uniqueId);
 }
@@ -957,12 +1079,10 @@ function updateFlightPathLine(uniqueId) {
     const path = flightPaths.get(uniqueId);
     if (!path || path.length < 2) return;
 
-    // Remove old line
     if (pathLines.has(uniqueId)) {
         map.removeLayer(pathLines.get(uniqueId));
     }
 
-    // Create new line
     const polyline = L.polyline(path, {
         color: '#00ff00',
         weight: 3,
@@ -976,22 +1096,62 @@ function updateFlightPathLine(uniqueId) {
 function openPanel(aircraft) {
     const panel = document.getElementById('infoPanel');
     
-    // Update panel content
+    // Update basic info
     document.getElementById('panelCallsign').textContent = aircraft.atcId;
     document.getElementById('panelRegistration').textContent = 'ID: ' + aircraft.uniqueId;
     document.getElementById('panelManufacturer').textContent = aircraft.ui_manufacturer || '---';
     document.getElementById('panelType').textContent = aircraft.atcModel || '---';
-    document.getElementById('panelVariation').textContent = aircraft.atcAirline || '---';
+    document.getElementById('panelVariation').textContent = aircraft.ui_variation || '---';
     document.getElementById('panelRegistrationInfo').textContent = aircraft.atcId || '---';
     document.getElementById('panelSpeed').textContent = Math.round(aircraft.groundSpeed) + ' kts';
     document.getElementById('panelAltitude').textContent = Math.round(aircraft.altitude).toLocaleString() + ' ft';
     document.getElementById('panelHeading').textContent = Math.round(aircraft.heading) + '°';
     
-    // Update status indicator
+    // Update status
     updatePanelStatus(aircraft.isPaused);
     
-    // Show panel
+    // Update route and progress
+    updateRouteInfo(aircraft);
+    updateFlightProgress(aircraft);
+    
     panel.classList.add('open');
+}
+
+function updateRouteInfo(aircraft) {
+    // This will need to be populated from your flight data
+    // For now, showing placeholders
+    document.getElementById('departureCode').textContent = aircraft.departureAirport || '---';
+    document.getElementById('arrivalCode').textContent = aircraft.destinationAirport || '---';
+    
+    // You'll need to calculate these from your data
+    document.getElementById('departureTime').textContent = '--:--';
+    document.getElementById('arrivalTime').textContent = '--:--';
+}
+
+function updateFlightProgress(aircraft) {
+    // Calculate progress based on distance
+    // You'll need to implement this based on your data structure
+    const totalDistance = aircraft.totalDistance || 0;
+    const remainingDistance = aircraft.distanceRemaining || 0;
+    
+    let progressPercent = 0;
+    if (totalDistance > 0) {
+        progressPercent = ((totalDistance - remainingDistance) / totalDistance) * 100;
+    }
+    
+    document.getElementById('progressBar').style.width = progressPercent + '%';
+    document.getElementById('progressPlane').style.left = progressPercent + '%';
+    
+    // Update distance info
+    const distanceFlown = totalDistance - remainingDistance;
+    document.getElementById('distanceFlown').textContent = Math.round(distanceFlown * 1.852) + ' km';
+    document.getElementById('distanceRemaining').textContent = Math.round(remainingDistance * 1.852) + ' km';
+    
+    // Calculate time remaining
+    const timeRemaining = aircraft.ete || 0;
+    const hours = Math.floor(timeRemaining / 3600);
+    const minutes = Math.floor((timeRemaining % 3600) / 60);
+    document.getElementById('timeRemaining').innerHTML = \`<strong>\${hours}h \${minutes}m</strong> remaining\`;
 }
 
 function updatePanelStatus(isPaused) {
@@ -1003,15 +1163,15 @@ function updatePanelStatus(isPaused) {
     }
 }
 
-        function closePanel() {
-            const panel = document.getElementById('infoPanel');
-            panel.classList.remove('open');
-        }
+function closePanel() {
+    const panel = document.getElementById('infoPanel');
+    panel.classList.remove('open');
+}
 
-        window.onload = initMap;
+window.onload = initMap;
     </script>
 </body>
-</html>`;
+</html>\`;
 }
 
 function getMobileAppHTML() {
@@ -4305,6 +4465,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
