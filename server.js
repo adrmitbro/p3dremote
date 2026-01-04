@@ -75,7 +75,6 @@ const heartbeat = setInterval(() => {
         if (session) {
           // Clear flight data so aircraft disappears from public map
           session.lastFlightData = null;
-          session.flightPath = [];
           
           // Notify mobile clients
           session.mobileClients.forEach(client => {
@@ -332,13 +331,13 @@ ws.on('close', () => {
     if (ws.uniqueId && sessions.has(ws.uniqueId)) {
       const session = sessions.get(ws.uniqueId);
       
-      if (ws.clientType === 'pc') {
-        console.log(`PC disconnected: ${ws.uniqueId}`);
-        
-        // Clear flight data so aircraft disappears from public map
-        session.lastFlightData = null;
-        session.flightPath = [];
-        session.pcClient = null;
+if (ws.clientType === 'pc') {
+    console.log(`PC disconnected: ${ws.uniqueId}`);
+    
+    // Clear CURRENT position but KEEP flight path history
+    session.lastFlightData = null;
+    // DON'T clear flightPath - keep the history!
+    session.pcClient = null;
         
         // Notify mobile clients
         session.mobileClients.forEach(client => {
@@ -4285,6 +4284,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
