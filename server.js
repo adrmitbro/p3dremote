@@ -35,14 +35,7 @@ aircraft.push({
         ui_type: session.lastFlightData.ui_type || null,
         ui_variation: session.lastFlightData.ui_variation || null,
         flightPath: session.flightPath || [],
-        isPaused: session.isPaused || false,  // <-- ADD COMMA HERE!
-        flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
-flightPlanDestination: session.lastFlightData.flightPlanDestination || null,
-flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
-takeoffTime: session.lastFlightData.takeoffTime || null,
-totalDistance: session.lastFlightData.totalDistance || 0,
-ete: session.lastFlightData.ete || 0,
-  
+        isPaused: session.isPaused || false
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -4500,9 +4493,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
-
 
 
 
