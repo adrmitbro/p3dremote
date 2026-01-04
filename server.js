@@ -239,7 +239,6 @@ ws.on('message', (message) => {
       
 else if (data.type === 'flight_data') {
         console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
-        console.log('Flight data:', data.data ? 'Has data' : 'No data');
         
         if (ws.clientType === 'pc' && ws.uniqueId && sessions.has(ws.uniqueId)) {
           const session = sessions.get(ws.uniqueId);
@@ -256,32 +255,34 @@ else if (data.type === 'flight_data') {
             if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
               session.flightPath.push([lat, lon]);
             }
-            // MEMORY FIX: Limit flight path to last 1000 points
             if (session.flightPath.length > 2000) {
-              session.flightPath.shift(); // Remove oldest point
+              session.flightPath.shift();
             }
           }
           
-          // ========== FIX 1 STARTS HERE ==========
-          // Extract origin and final destination from flight plan
-          if (data.data.flightPlanOrigin) {
-            session.lastFlightData.flightPlanOrigin = data.data.flightPlanOrigin;
+          // Track waypoints - build a list as we progress
+          if (!session.waypointsList) {
+            session.waypointsList = [];
           }
           
-          // Get final destination from waypoints list
-          if (data.data.waypointsList && Array.isArray(data.data.waypointsList) && data.data.waypointsList.length > 0) {
-            const lastWaypoint = data.data.waypointsList[data.data.waypointsList.length - 1];
-            if (lastWaypoint && lastWaypoint.id) {
-              session.lastFlightData.finalDestination = lastWaypoint.id;
-              console.log('Final destination extracted:', lastWaypoint.id);
+          // Add new waypoint if we haven't seen it yet
+          if (data.data.nextWaypoint && data.data.nextWaypoint !== '----') {
+            const wpExists = session.waypointsList.some(wp => wp === data.data.nextWaypoint);
+            if (!wpExists) {
+              session.waypointsList.push(data.data.nextWaypoint);
+              console.log('Added waypoint to list:', data.data.nextWaypoint);
             }
           }
           
-          // Fallback to flightPlanDestination if no waypoints
-          if (!session.lastFlightData.finalDestination && data.data.flightPlanDestination) {
+          // Store the destination (last waypoint in the list)
+          if (session.waypointsList.length > 0) {
+            session.lastFlightData.finalDestination = session.waypointsList[session.waypointsList.length - 1];
+          }
+          
+          // Fallback to flightPlanDestination if provided
+          if (data.data.flightPlanDestination && !session.lastFlightData.finalDestination) {
             session.lastFlightData.finalDestination = data.data.flightPlanDestination;
           }
-          // ========== FIX 1 ENDS HERE ==========
         }
         
         const session = sessions.get(ws.uniqueId);
@@ -4512,6 +4513,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
