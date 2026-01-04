@@ -42,6 +42,7 @@ flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
 takeoffTime: session.lastFlightData.takeoffTime || null,
 totalDistance: session.lastFlightData.totalDistance || 0,
 ete: session.lastFlightData.ete || 0,
+        finalDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
     }
@@ -236,7 +237,7 @@ ws.on('message', (message) => {
         }
       }
       
-      else if (data.type === 'flight_data') {
+else if (data.type === 'flight_data') {
         console.log('Received flight_data from:', ws.clientType, ws.uniqueId);
         console.log('Flight data:', data.data ? 'Has data' : 'No data');
         
@@ -256,9 +257,17 @@ ws.on('message', (message) => {
               session.flightPath.push([lat, lon]);
             }
             // MEMORY FIX: Limit flight path to last 1000 points
-if (session.flightPath.length > 2000) {
-  session.flightPath.shift(); // Remove oldest point
-}
+            if (session.flightPath.length > 2000) {
+              session.flightPath.shift(); // Remove oldest point
+            }
+          }
+          
+          // NEW CODE - Extract final destination from waypoint list if available
+          if (data.data.waypointsList && data.data.waypointsList.length > 0) {
+            const lastWaypoint = data.data.waypointsList[data.data.waypointsList.length - 1];
+            if (lastWaypoint && lastWaypoint.id) {
+              session.lastFlightData.finalDestination = lastWaypoint.id;
+            }
           }
         }
         
@@ -1126,7 +1135,7 @@ function openPanel(aircraft) {
 function updateRouteInfo(aircraft) {
     // Departure/Destination airports
     document.getElementById('departureCode').textContent = aircraft.flightPlanOrigin || '---';
-    document.getElementById('arrivalCode').textContent = aircraft.flightPlanDestination || '---';
+    document.getElementById('arrivalCode').textContent = aircraft.finalDestination || aircraft.flightPlanDestination || '---';
     
     // Calculate times
     const now = Date.now() / 1000; // Current time in Unix seconds
@@ -4487,6 +4496,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
