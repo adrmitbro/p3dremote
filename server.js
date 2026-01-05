@@ -760,7 +760,7 @@ return `<!DOCTYPE html><html>
         @media (max-width: 768px) {
             .info-panel {
                 width: 100%;
-                height: 60vh;
+                height: 45vh;
                 top: auto;
                 bottom: -60vh;
                 left: 0;
@@ -1092,6 +1092,40 @@ function updateMap() {
             }
         }
     });
+
+        // ========== ADD THIS NEW CODE HERE ==========
+    // Update panel data in real-time if a user aircraft is selected
+    if (selectedAircraftId) {
+        const selectedAc = allAircraft.find(ac => ac.uniqueId === selectedAircraftId);
+        
+        if (selectedAc) {
+            const panel = document.getElementById('infoPanel');
+            
+            // Only update if panel is actually open
+            if (panel && panel.classList.contains('open')) {
+                // Update basic flight data
+                const speedEl = document.getElementById('panelSpeed');
+                const altEl = document.getElementById('panelAltitude');
+                const headingEl = document.getElementById('panelHeading');
+                
+                if (speedEl) speedEl.textContent = Math.round(selectedAc.groundSpeed) + ' kts';
+                if (altEl) altEl.textContent = Math.round(selectedAc.altitude).toLocaleString() + ' ft';
+                if (headingEl) headingEl.textContent = Math.round(selectedAc.heading) + '°';
+                
+                // Update pause status
+                updatePanelStatus(selectedAc.isPaused);
+                
+                // Update route and progress information
+                updateRouteInfo(selectedAc);
+                updateFlightProgress(selectedAc);
+            }
+        } else {
+            // Selected aircraft no longer exists - close panel
+            closePanel();
+            selectedAircraftId = null;
+        }
+    }
+    // ========== END NEW CODE ==========
 }
 
 function toggleFlightPath(uniqueId) {
@@ -1112,17 +1146,24 @@ function updateFlightPathLine(uniqueId) {
         map.removeLayer(pathLines.get(uniqueId));
     }
 
+    // FIXED: Use the ENTIRE path from start to current position
+    // Don't truncate the beginning - show full flight history
     const polyline = L.polyline(path, {
         color: '#00ff00',
         weight: 3,
         opacity: 0.7,
-        smoothFactor: 1
+        smoothFactor: 1,
+        // Add this to prevent line from "snapping" between points
+        noClip: false
     }).addTo(map);
 
     pathLines.set(uniqueId, polyline);
 }
 
 function openPanel(aircraft) {
+    // DON'T automatically pan to aircraft - let user control map freely
+    // Remove any map.setView() calls here
+    
     const panel = document.getElementById('infoPanel');
     
     // Update basic info
@@ -1177,14 +1218,30 @@ function updateRouteInfo(aircraft) {
     }
 }
 function updateFlightProgress(aircraft) {
-    // Calculate progress based on distance
-    // You'll need to implement this based on your data structure
-    const totalDistance = aircraft.totalDistance || 0;
-    const remainingDistance = aircraft.distanceRemaining || 0;
+    // Reset initial distance if it seems aircraft restarted/changed flight plan
+    if (window.initialFlightDistance && totalDistance > window.initialFlightDistance * 1.1) {
+        // Distance increased significantly - new flight plan detected
+        window.initialFlightDistance = totalDistance;
+        console.log('New flight plan detected - reset progress tracking');
+    }
+    // Calculate progress based on actual distance traveled vs total
+    const totalDistance = aircraft.totalDistance || 0; // This is REMAINING distance from sim
+    const distanceToWaypoint = aircraft.distanceToWaypoint || 0;
     
+    // Calculate distance flown: get from flight path or calculate from start position
+    let distanceFlown = 0;
     let progressPercent = 0;
-    if (totalDistance > 0) {
-        progressPercent = ((totalDistance - remainingDistance) / totalDistance) * 100;
+    
+    // Get stored initial distance when flight started
+    if (!window.initialFlightDistance) {
+        window.initialFlightDistance = totalDistance; // Store initial distance on first update
+    }
+    
+    // Distance flown = initial distance - current remaining distance
+    if (window.initialFlightDistance > 0 && totalDistance > 0) {
+        distanceFlown = window.initialFlightDistance - totalDistance;
+        progressPercent = (distanceFlown / window.initialFlightDistance) * 100;
+        progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamp 0-100%
     }
     
     document.getElementById('progressBar').style.width = progressPercent + '%';
@@ -4513,6 +4570,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
