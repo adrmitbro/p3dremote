@@ -260,10 +260,25 @@ else if (data.type === 'flight_data') {
             }
           }
           
-          // Track waypoints - build a list as we progress
+// Track waypoints - build a list as we progress
           if (!session.waypointsList) {
             session.waypointsList = [];
           }
+          
+          // ========== ADD THIS NEW CODE HERE ==========
+          // Detect flight plan changes by checking if we jumped backwards in waypoint sequence
+          if (data.data.gpsFlightPlanWpIndex !== undefined && session.lastWaypointIndex !== undefined) {
+            // If waypoint index decreased significantly, flight plan was changed
+            if (data.data.gpsFlightPlanWpIndex < session.lastWaypointIndex - 1) {
+              console.log('Flight plan change detected! Clearing waypoint tracking.');
+              session.waypointsList = [];
+              session.lastFlightData.finalDestination = null;
+            }
+          }
+          
+          // Store current waypoint index for next comparison
+          session.lastWaypointIndex = data.data.gpsFlightPlanWpIndex;
+          // ========== END NEW CODE ==========
           
           // Add new waypoint if we haven't seen it yet
           if (data.data.nextWaypoint && data.data.nextWaypoint !== '----') {
@@ -1189,75 +1204,111 @@ function openPanel(aircraft) {
 
 function updateRouteInfo(aircraft) {
     // Departure/Destination airports
-    document.getElementById('departureCode').textContent = aircraft.flightPlanOrigin || '---';
-    document.getElementById('arrivalCode').textContent = aircraft.flightPlanDestination || '---';
+    const depEl = document.getElementById('departureCode');
+    const arrEl = document.getElementById('arrivalCode');
+    
+    if (depEl) depEl.textContent = aircraft.flightPlanOrigin || '---';
+    if (arrEl) arrEl.textContent = aircraft.flightPlanDestination || '---';
     
     // Use sim time if available, otherwise use real time
     const currentTime = aircraft.simTime || (Date.now() / 1000);
     
-    // DEPARTURE TIME: Use takeoff time if airborne, otherwise use flight plan start time
+    const depTimeEl = document.getElementById('departureTime');
+    const arrTimeEl = document.getElementById('arrivalTime');
+    
+    // DEPARTURE TIME: Use takeoff time (wheels up) if available
     if (aircraft.takeoffTime && aircraft.takeoffTime > 0) {
         const departureTime = new Date(aircraft.takeoffTime * 1000);
-        document.getElementById('departureTime').textContent = 
-            departureTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    } else if (aircraft.flightPlanStartTime && aircraft.flightPlanStartTime > 0) {
-        const scheduledDep = new Date(aircraft.flightPlanStartTime * 1000);
-        document.getElementById('departureTime').textContent = 
-            scheduledDep.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        if (depTimeEl) {
+            depTimeEl.textContent = departureTime.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                hour12: false 
+            });
+        }
     } else {
-        document.getElementById('departureTime').textContent = '--:--';
+        if (depTimeEl) depTimeEl.textContent = '--:--';
     }
     
     // ESTIMATED ARRIVAL: Current sim time + remaining ETE
     if (aircraft.ete && aircraft.ete > 0) {
         const estimatedArrival = new Date((currentTime + aircraft.ete) * 1000);
-        document.getElementById('arrivalTime').textContent = 
-            estimatedArrival.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        if (arrTimeEl) {
+            arrTimeEl.textContent = estimatedArrival.toLocaleTimeString('en-US', { 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                hour12: false 
+            });
+        }
     } else {
-        document.getElementById('arrivalTime').textContent = '--:--';
+        if (arrTimeEl) arrTimeEl.textContent = '--:--';
     }
 }
+
 function updateFlightProgress(aircraft) {
-    // Calculate progress based on actual distance traveled vs total
-    const totalDistance = aircraft.totalDistance || 0; // MOVED TO TOP - declare first!
-    const distanceToWaypoint = aircraft.distanceToWaypoint || 0;
+    const totalDistance = aircraft.totalDistance || 0; // This is REMAINING distance from sim
     
-    // Reset initial distance if it seems aircraft restarted/changed flight plan
-    if (window.initialFlightDistance && totalDistance > window.initialFlightDistance * 1.1) {
-        // Distance increased significantly - new flight plan detected
-        window.initialFlightDistance = totalDistance;
-        console.log('New flight plan detected - reset progress tracking');
+    // Store the FIRST distance we see as the "total trip distance"
+    const storageKey = 'initialDistance_' + (aircraft.uniqueId || 'default');
+    
+    if (!window.flightDistances) {
+        window.flightDistances = {};
     }
     
-    // Calculate distance flown: get from flight path or calculate from start position
+    // Initialize on first update OR if distance increased (new flight plan)
+    if (!window.flightDistances[storageKey] || totalDistance > window.flightDistances[storageKey]) {
+        window.flightDistances[storageKey] = totalDistance;
+        console.log('Initialized flight distance tracking: ' + totalDistance + ' nm');
+    }
+    
+    const initialDistance = window.flightDistances[storageKey];
     let distanceFlown = 0;
     let progressPercent = 0;
     
-    // Get stored initial distance when flight started
-    if (!window.initialFlightDistance) {
-        window.initialFlightDistance = totalDistance; // Store initial distance on first update
-    }
-    
-    // Distance flown = initial distance - current remaining distance
-    if (window.initialFlightDistance > 0 && totalDistance > 0) {
-        distanceFlown = window.initialFlightDistance - totalDistance;
-        progressPercent = (distanceFlown / window.initialFlightDistance) * 100;
-        progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamp 0-100%
+    // Calculate progress
+    if (initialDistance > 0 && totalDistance >= 0) {
+        distanceFlown = initialDistance - totalDistance;
+        progressPercent = (distanceFlown / initialDistance) * 100;
+        
+        // Clamp between 0-100%
+        progressPercent = Math.max(0, Math.min(100, progressPercent));
+        
+        console.log('Progress: ' + progressPercent.toFixed(1) + '% | Flown: ' + distanceFlown.toFixed(1) + ' nm | Remaining: ' + totalDistance.toFixed(1) + ' nm');
     }
     
     // Update progress bar
-    document.getElementById('progressBar').style.width = progressPercent + '%';
-    document.getElementById('progressPlane').style.left = progressPercent + '%';
+    const progressBar = document.getElementById('progressBar');
+    const progressPlane = document.getElementById('progressPlane');
     
-    // Update distance info - use the distanceFlown we already calculated
-    document.getElementById('distanceFlown').textContent = Math.round(distanceFlown * 1.852) + ' km';
-    document.getElementById('distanceRemaining').textContent = Math.round(totalDistance * 1.852) + ' km';
+    if (progressBar) progressBar.style.width = progressPercent + '%';
+    if (progressPlane) progressPlane.style.left = progressPercent + '%';
     
-    // Calculate time remaining
+    // Update distance displays
+    const distanceFlownEl = document.getElementById('distanceFlown');
+    const distanceRemainingEl = document.getElementById('distanceRemaining');
+    
+    if (distanceFlownEl) {
+        distanceFlownEl.textContent = Math.round(distanceFlown * 1.852) + ' km';
+    }
+    if (distanceRemainingEl) {
+        distanceRemainingEl.textContent = Math.round(totalDistance * 1.852) + ' km';
+    }
+    
+    // Update time remaining
     const timeRemaining = aircraft.ete || 0;
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
-document.getElementById('timeRemaining').innerHTML = '<strong>' + hours + 'h ' + minutes + 'm</strong> remaining';
+    
+    const timeRemainingEl = document.getElementById('timeRemaining');
+    if (timeRemainingEl) {
+        timeRemainingEl.innerHTML = '<strong>' + hours + 'h ' + minutes + 'm</strong> remaining';
+    }
+    
+    // Reset tracking if flight completed (remaining distance is very small and we've made progress)
+    if (totalDistance < 5 && distanceFlown > 10) {
+        console.log('Flight completed - will reset on next flight plan');
+        delete window.flightDistances[storageKey];
+    }
 }
 
 function updatePanelStatus(isPaused) {
@@ -4571,6 +4622,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
