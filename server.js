@@ -1297,27 +1297,26 @@ function updateRouteInfo(aircraft) {
 function updateFlightProgress(aircraft) {
     const totalDistance = aircraft.totalDistance || 0; // This is REMAINING distance from sim
     
-    // Use server-provided initial distance if available
-    let initialDistance = aircraft.initialDistance || 0;
+// Use server-provided initial distance if available
+let initialDistance = aircraft.initialDistance || 0;
 
-    // Fallback to browser storage if server doesn't have it
-    if (!initialDistance || initialDistance === 0) {
-      const storageKey = 'initialDistance_' + (aircraft.uniqueId || 'default');
-      
-      if (!window.flightDistances) {
-        window.flightDistances = {};
-      }
-      
-      if (!window.flightDistances[storageKey] || totalDistance > window.flightDistances[storageKey]) {
-        window.flightDistances[storageKey] = totalDistance;
-        console.log('Initialized flight distance tracking: ' + totalDistance + ' nm');
-      }
-      
-      initialDistance = window.flightDistances[storageKey];
-    } else {
-      console.log('Using server initial distance:', initialDistance, 'nm');
-    }
-    
+// Fallback to browser storage if server doesn't have it
+if (!initialDistance || initialDistance === 0) {
+  const storageKey = 'initialDistance_' + (aircraft.uniqueId || 'default');
+  
+  if (!window.flightDistances) {
+    window.flightDistances = {};
+  }
+  
+  if (!window.flightDistances[storageKey] || totalDistance > window.flightDistances[storageKey]) {
+    window.flightDistances[storageKey] = totalDistance;
+    console.log('Initialized flight distance tracking: ' + totalDistance + ' nm');
+  }
+  
+  initialDistance = window.flightDistances[storageKey];
+} else {
+  console.log('Using server initial distance:', initialDistance, 'nm');
+}
     let distanceFlown = 0;
     let progressPercent = 0;
     
@@ -1337,16 +1336,17 @@ function updateFlightProgress(aircraft) {
     const progressPlane = document.getElementById('progressPlane');
     
     if (progressBar) progressBar.style.width = progressPercent + '%';
+// Progress plane icon removed
     
-    // Update distance displays - **CHANGED TO NM**
+    // Update distance displays
     const distanceFlownEl = document.getElementById('distanceFlown');
     const distanceRemainingEl = document.getElementById('distanceRemaining');
     
     if (distanceFlownEl) {
-        distanceFlownEl.textContent = Math.round(distanceFlown) + ' nm'; // **CHANGED**
+        distanceFlownEl.textContent = Math.round(distanceFlown * 1.852) + ' km';
     }
     if (distanceRemainingEl) {
-        distanceRemainingEl.textContent = Math.round(totalDistance) + ' nm'; // **CHANGED**
+        distanceRemainingEl.textContent = Math.round(totalDistance * 1.852) + ' km';
     }
     
     // Update time remaining
@@ -1363,6 +1363,15 @@ function updateFlightProgress(aircraft) {
     if (totalDistance < 5 && distanceFlown > 10) {
         console.log('Flight completed - will reset on next flight plan');
         delete window.flightDistances[storageKey];
+    }
+}
+
+function updatePanelStatus(isPaused) {
+    const statusElement = document.getElementById('panelStatus');
+    if (isPaused) {
+        statusElement.innerHTML = '<span class="status-indicator paused"></span>Paused';
+    } else {
+        statusElement.innerHTML = '<span class="status-indicator active"></span>Active';
     }
 }
 
@@ -4668,8 +4677,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
