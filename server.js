@@ -775,7 +775,7 @@ return `<!DOCTYPE html><html>
         @media (max-width: 768px) {
             .info-panel {
                 width: 100%;
-                height: 45vh;
+                height: 40vh;
                 top: auto;
                 bottom: -60vh;
                 left: 0;
@@ -4622,6 +4622,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
