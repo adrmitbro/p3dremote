@@ -1109,37 +1109,48 @@ function updateMap() {
     });
 
         // ========== ADD THIS NEW CODE HERE ==========
-    // Update panel data in real-time if a user aircraft is selected
-    if (selectedAircraftId) {
-        const selectedAc = allAircraft.find(ac => ac.uniqueId === selectedAircraftId);
+// Update panel data in real-time if a user aircraft is selected
+if (selectedAircraftId) {
+    const selectedAc = allAircraft.find(ac => ac.uniqueId === selectedAircraftId);
+    
+    if (selectedAc) {
+        const panel = document.getElementById('infoPanel');
         
-        if (selectedAc) {
-            const panel = document.getElementById('infoPanel');
+        // Only update if panel is actually open
+        if (panel && panel.classList.contains('open')) {
+            // Update basic flight data
+            const speedEl = document.getElementById('panelSpeed');
+            const altEl = document.getElementById('panelAltitude');
+            const headingEl = document.getElementById('panelHeading');
             
-            // Only update if panel is actually open
-            if (panel && panel.classList.contains('open')) {
-                // Update basic flight data
-                const speedEl = document.getElementById('panelSpeed');
-                const altEl = document.getElementById('panelAltitude');
-                const headingEl = document.getElementById('panelHeading');
-                
-                if (speedEl) speedEl.textContent = Math.round(selectedAc.groundSpeed) + ' kts';
-                if (altEl) altEl.textContent = Math.round(selectedAc.altitude).toLocaleString() + ' ft';
-                if (headingEl) headingEl.textContent = Math.round(selectedAc.heading) + '°';
-                
-                // Update pause status
-                updatePanelStatus(selectedAc.isPaused);
-                
-                // Update route and progress information
-                updateRouteInfo(selectedAc);
-                updateFlightProgress(selectedAc);
-            }
-        } else {
-            // Selected aircraft no longer exists - close panel
-            closePanel();
-            selectedAircraftId = null;
+            if (speedEl) speedEl.textContent = Math.round(selectedAc.groundSpeed) + ' kts';
+            if (altEl) altEl.textContent = Math.round(selectedAc.altitude).toLocaleString() + ' ft';
+            if (headingEl) headingEl.textContent = Math.round(selectedAc.heading) + '°';
+            
+            // Update pause status
+            updatePanelStatus(selectedAc.isPaused);
+            
+            // Update route and progress information
+            updateRouteInfo(selectedAc);
+            updateFlightProgress(selectedAc);
+            
+            // Update aircraft registration and info
+            const panelRegistrationEl = document.getElementById('panelRegistrationInfo');
+            const panelManufacturerEl = document.getElementById('panelManufacturer');
+            const panelTypeEl = document.getElementById('panelType');
+            const panelVariationEl = document.getElementById('panelVariation');
+            
+            if (panelRegistrationEl) panelRegistrationEl.textContent = selectedAc.atcId || '---';
+            if (panelManufacturerEl) panelManufacturerEl.textContent = selectedAc.ui_manufacturer || '---';
+            if (panelTypeEl) panelTypeEl.textContent = selectedAc.atcModel || '---';
+            if (panelVariationEl) panelVariationEl.textContent = selectedAc.ui_variation || '---';
         }
+    } else {
+        // Selected aircraft no longer exists - close panel
+        closePanel();
+        selectedAircraftId = null;
     }
+}
     // ========== END NEW CODE ==========
     // **ADD THIS RIGHT AFTER THE EXISTING CODE ABOVE:**
 
@@ -4634,6 +4645,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
