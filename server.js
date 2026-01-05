@@ -267,9 +267,6 @@ if (lat && lon) {
   if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
     persistentData.flightPath.push([lat, lon]);
   }
-  if (persistentData.flightPath.length > 2000) {
-    persistentData.flightPath.shift();
-  }
 }
 
 // Also keep a reference in session for easy access
@@ -4670,6 +4667,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
