@@ -1059,12 +1059,21 @@ function updateMap() {
 
     const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
 
-allAircraft.forEach(ac => {
-    const uniqueId = ac.uniqueId;
+    allAircraft.forEach(ac => {
+        const uniqueId = ac.uniqueId;
 
-    // ALWAYS use server path - don't maintain client-side path
+// Store position in flight path
+if (!flightPaths.has(uniqueId)) {
+    // Initialize with server's flight path if available
     flightPaths.set(uniqueId, ac.flightPath || []);
-    const path = flightPaths.get(uniqueId);
+}
+const path = flightPaths.get(uniqueId);
+
+// Only add if position has changed (avoid duplicates)
+const lastPos = path.length > 0 ? path[path.length - 1] : null;
+if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+    path.push([ac.latitude, ac.longitude]);
+}
 
         if (markerMap.has(uniqueId)) {
             const marker = markerMap.get(uniqueId);
@@ -1176,11 +1185,13 @@ if (panelVariationEl) panelVariationEl.textContent = selectedAc.ui_variation || 
 }
 
 function toggleFlightPath(uniqueId) {
+    // Hide previous path if any
     if (selectedAircraftId && pathLines.has(selectedAircraftId)) {
         map.removeLayer(pathLines.get(selectedAircraftId));
         pathLines.delete(selectedAircraftId);
     }
     
+    // Show new path
     selectedAircraftId = uniqueId;
     updateFlightPathLine(uniqueId);
 }
@@ -1189,23 +1200,22 @@ function updateFlightPathLine(uniqueId) {
     const path = flightPaths.get(uniqueId);
     if (!path || path.length < 2) return;
 
+    // Remove old line
     if (pathLines.has(uniqueId)) {
         map.removeLayer(pathLines.get(uniqueId));
     }
 
-    // FIXED: Use the ENTIRE path from start to current position
-    // Don't truncate the beginning - show full flight history
+    // Create new line
     const polyline = L.polyline(path, {
         color: '#00ff00',
         weight: 3,
         opacity: 0.7,
-        smoothFactor: 1,
-        // Add this to prevent line from "snapping" between points
-        noClip: false
+        smoothFactor: 1
     }).addTo(map);
 
     pathLines.set(uniqueId, polyline);
 }
+
 
 function openPanel(aircraft) {
     // DON'T automatically pan to aircraft - let user control map freely
@@ -4660,6 +4670,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
