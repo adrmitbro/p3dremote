@@ -25,7 +25,7 @@ function getOnlineAircraft() {
   sessions.forEach((session, uniqueId) => {
     console.log('Checking session:', uniqueId, 'has flight data:', !!session.lastFlightData);
     if (session.lastFlightData && session.lastFlightData.latitude && session.lastFlightData.longitude) {
-aircraft.push({
+      aircraft.push({
         uniqueId: uniqueId.substring(0, 9),
         latitude: session.lastFlightData.latitude,
         longitude: session.lastFlightData.longitude,
@@ -37,15 +37,20 @@ aircraft.push({
         ui_manufacturer: session.lastFlightData.ui_manufacturer || null,
         ui_type: session.lastFlightData.ui_type || null,
         ui_variation: session.lastFlightData.ui_variation || null,
-flightPath: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).flightPath : [],
-initialDistance: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).initialDistance : null,
+        flightPath: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).flightPath : [],
+        initialDistance: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).initialDistance : null,
         isPaused: session.isPaused || false,
-  flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
-flightPlanDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
-flightPlanStartTime: session.lastFlightData.flightPlanStartTime || null,
-takeoffTime: session.lastFlightData.takeoffTime || null,
-totalDistance: session.lastFlightData.totalDistance || 0,
-ete: session.lastFlightData.ete || 0,
+        flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
+        flightPlanDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
+        
+        // **MODIFIED: Use simStartupTime instead of flightPlanStartTime**
+        flightPlanStartTime: session.lastFlightData.simStartupTime || session.lastFlightData.departureTime || null,
+        
+        // **REMOVED: takeoffTime (no longer needed)**
+        // takeoffTime: session.lastFlightData.takeoffTime || null,
+        
+        totalDistance: session.lastFlightData.totalDistance || 0,
+        ete: session.lastFlightData.ete || 0,
         finalDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
       });
       console.log('Added aircraft:', aircraft[aircraft.length - 1].atcId);
@@ -1255,9 +1260,9 @@ function updateRouteInfo(aircraft) {
     const depTimeEl = document.getElementById('departureTime');
     const arrTimeEl = document.getElementById('arrivalTime');
     
-    // DEPARTURE TIME: Use takeoff time (wheels up) if available
-    if (aircraft.takeoffTime && aircraft.takeoffTime > 0) {
-        const departureTime = new Date(aircraft.takeoffTime * 1000);
+    // **MODIFIED: DEPARTURE TIME uses sim startup time**
+    if (aircraft.flightPlanStartTime && aircraft.flightPlanStartTime > 0) {
+        const departureTime = new Date(aircraft.flightPlanStartTime * 1000);
         if (depTimeEl) {
             depTimeEl.textContent = departureTime.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
@@ -1269,9 +1274,14 @@ function updateRouteInfo(aircraft) {
         if (depTimeEl) depTimeEl.textContent = '--:--';
     }
     
-    // ESTIMATED ARRIVAL: Current sim time + remaining ETE
-    if (aircraft.ete && aircraft.ete > 0) {
-        const estimatedArrival = new Date((currentTime + aircraft.ete) * 1000);
+    // **ESTIMATED ARRIVAL: Startup time + elapsed time + remaining ETE**
+    if (aircraft.ete && aircraft.ete > 0 && aircraft.flightPlanStartTime) {
+        // Calculate elapsed time since startup
+        const elapsedTime = currentTime - aircraft.flightPlanStartTime;
+        
+        // Estimated arrival = startup time + elapsed + remaining ETE
+        const estimatedArrival = new Date((aircraft.flightPlanStartTime + elapsedTime + aircraft.ete) * 1000);
+        
         if (arrTimeEl) {
             arrTimeEl.textContent = estimatedArrival.toLocaleTimeString('en-US', { 
                 hour: '2-digit', 
@@ -4667,6 +4677,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
