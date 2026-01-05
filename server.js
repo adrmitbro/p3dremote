@@ -1218,15 +1218,16 @@ function updateRouteInfo(aircraft) {
     }
 }
 function updateFlightProgress(aircraft) {
+    // Calculate progress based on actual distance traveled vs total
+    const totalDistance = aircraft.totalDistance || 0; // MOVED TO TOP - declare first!
+    const distanceToWaypoint = aircraft.distanceToWaypoint || 0;
+    
     // Reset initial distance if it seems aircraft restarted/changed flight plan
     if (window.initialFlightDistance && totalDistance > window.initialFlightDistance * 1.1) {
         // Distance increased significantly - new flight plan detected
         window.initialFlightDistance = totalDistance;
         console.log('New flight plan detected - reset progress tracking');
     }
-    // Calculate progress based on actual distance traveled vs total
-    const totalDistance = aircraft.totalDistance || 0; // This is REMAINING distance from sim
-    const distanceToWaypoint = aircraft.distanceToWaypoint || 0;
     
     // Calculate distance flown: get from flight path or calculate from start position
     let distanceFlown = 0;
@@ -1244,19 +1245,19 @@ function updateFlightProgress(aircraft) {
         progressPercent = Math.max(0, Math.min(100, progressPercent)); // Clamp 0-100%
     }
     
+    // Update progress bar
     document.getElementById('progressBar').style.width = progressPercent + '%';
     document.getElementById('progressPlane').style.left = progressPercent + '%';
     
-    // Update distance info
-    const distanceFlown = totalDistance - remainingDistance;
+    // Update distance info - use the distanceFlown we already calculated
     document.getElementById('distanceFlown').textContent = Math.round(distanceFlown * 1.852) + ' km';
-    document.getElementById('distanceRemaining').textContent = Math.round(remainingDistance * 1.852) + ' km';
+    document.getElementById('distanceRemaining').textContent = Math.round(totalDistance * 1.852) + ' km';
     
     // Calculate time remaining
     const timeRemaining = aircraft.ete || 0;
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
-    document.getElementById('timeRemaining').innerHTML = \`<strong>\${hours}h \${minutes}m</strong> remaining\`;
+    document.getElementById('timeRemaining').innerHTML = `<strong>${hours}h ${minutes}m</strong> remaining`;
 }
 
 function updatePanelStatus(isPaused) {
@@ -4570,6 +4571,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
