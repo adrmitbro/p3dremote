@@ -1141,6 +1141,18 @@ function updateMap() {
         }
     }
     // ========== END NEW CODE ==========
+    // **ADD THIS RIGHT AFTER THE EXISTING CODE ABOVE:**
+
+// Update aircraft registration and info in panel header
+const panelRegistrationEl = document.getElementById('panelRegistrationInfo');
+const panelManufacturerEl = document.getElementById('panelManufacturer');
+const panelTypeEl = document.getElementById('panelType');
+const panelVariationEl = document.getElementById('panelVariation');
+
+if (panelRegistrationEl) panelRegistrationEl.textContent = selectedAc.atcId || '---';
+if (panelManufacturerEl) panelManufacturerEl.textContent = selectedAc.ui_manufacturer || '---';
+if (panelTypeEl) panelTypeEl.textContent = selectedAc.atcModel || '---';
+if (panelVariationEl) panelVariationEl.textContent = selectedAc.ui_variation || '---';
 }
 
 function toggleFlightPath(uniqueId) {
@@ -4622,6 +4634,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
