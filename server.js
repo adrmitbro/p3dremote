@@ -1257,7 +1257,7 @@ function updateFlightProgress(aircraft) {
     const timeRemaining = aircraft.ete || 0;
     const hours = Math.floor(timeRemaining / 3600);
     const minutes = Math.floor((timeRemaining % 3600) / 60);
-    document.getElementById('timeRemaining').innerHTML = `<strong>${hours}h ${minutes}m</strong> remaining`;
+document.getElementById('timeRemaining').innerHTML = '<strong>' + hours + 'h ' + minutes + 'm</strong> remaining';
 }
 
 function updatePanelStatus(isPaused) {
@@ -4571,6 +4571,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
