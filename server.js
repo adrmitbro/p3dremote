@@ -1062,21 +1062,17 @@ function updateMap() {
 allAircraft.forEach(ac => {
     const uniqueId = ac.uniqueId;
 
-    // Initialize path from server data if we don't have it yet
-    if (!flightPaths.has(uniqueId)) {
-        flightPaths.set(uniqueId, ac.flightPath || []);
-    } else {
-        // If server has MORE path points than we do, use server's path
-        const currentPath = flightPaths.get(uniqueId);
+// ALWAYS use the server's path as the source of truth
         const serverPath = ac.flightPath || [];
-        if (serverPath.length > currentPath.length) {
-            flightPaths.set(uniqueId, serverPath);
-        }
-    }
-    const path = flightPaths.get(uniqueId);
-
-        const lastPos = path.length > 0 ? path[path.length - 1] : null;
-        if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
+        
+        // Update our local copy to match server
+        flightPaths.set(uniqueId, [...serverPath]); // Clone the array
+        
+        const path = flightPaths.get(uniqueId);
+        
+        // Only add current position if it's not already in the server path
+        const lastServerPos = serverPath.length > 0 ? serverPath[serverPath.length - 1] : null;
+        if (!lastServerPos || lastServerPos[0] !== ac.latitude || lastServerPos[1] !== ac.longitude) {
             path.push([ac.latitude, ac.longitude]);
         }
 
@@ -4674,6 +4670,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
