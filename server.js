@@ -432,6 +432,7 @@ if (ws.clientType === 'pc') {
     // Clear CURRENT position but KEEP flight path history
     session.lastFlightData = null;
     // DON'T clear flightPath - keep the history!
+    // DON'T delete persistentFlightData here!
     session.pcClient = null;
         
         // Notify mobile clients
@@ -1058,13 +1059,21 @@ function updateMap() {
 
     const activeIds = new Set(allAircraft.map(ac => ac.uniqueId));
 
-    allAircraft.forEach(ac => {
-        const uniqueId = ac.uniqueId;
+allAircraft.forEach(ac => {
+    const uniqueId = ac.uniqueId;
 
-        if (!flightPaths.has(uniqueId)) {
-            flightPaths.set(uniqueId, ac.flightPath || []);
+    // Initialize path from server data if we don't have it yet
+    if (!flightPaths.has(uniqueId)) {
+        flightPaths.set(uniqueId, ac.flightPath || []);
+    } else {
+        // If server has MORE path points than we do, use server's path
+        const currentPath = flightPaths.get(uniqueId);
+        const serverPath = ac.flightPath || [];
+        if (serverPath.length > currentPath.length) {
+            flightPaths.set(uniqueId, serverPath);
         }
-        const path = flightPaths.get(uniqueId);
+    }
+    const path = flightPaths.get(uniqueId);
 
         const lastPos = path.length > 0 ? path[path.length - 1] : null;
         if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
@@ -4665,6 +4674,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
