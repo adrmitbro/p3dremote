@@ -250,19 +250,15 @@ else if (data.type === 'flight_data') {
           }
           const lat = data.data.latitude;
           const lon = data.data.longitude;
-if (lat && lon) {
-  let path = flightPaths.get(ws.uniqueId);
-  if (!path) {
-    path = [];
-  }
-  const lastPos = path.length > 0 ? path[path.length - 1] : null;
-  if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
-    path.push([lat, lon]);
-  }
-  flightPaths.set(ws.uniqueId, path);
-  // Save updated path to localStorage
-  localStorage.setItem('flightPath_' + ws.uniqueId, JSON.stringify(path));
-}
+          if (lat && lon) {
+            const lastPos = session.flightPath.length > 0 ? session.flightPath[session.flightPath.length - 1] : null;
+            if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
+              session.flightPath.push([lat, lon]);
+            }
+            if (session.flightPath.length > 2000) {
+              session.flightPath.shift();
+            }
+          }
           
 // Track waypoints - build a list as we progress
           if (!session.waypointsList) {
@@ -969,19 +965,6 @@ function initMap() {
         maxZoom: 19,
         pane: 'shadowPane'
     });
-
-      // Load saved flight paths from localStorage
-  flightPaths.forEach((path, uniqueId) => {
-    const savedPath = localStorage.getItem('flightPath_' + uniqueId);
-    if (savedPath) {
-      try {
-        const parsedPath = JSON.parse(savedPath);
-        flightPaths.set(uniqueId, parsedPath);
-      } catch (e) {
-        console.error('Failed to parse saved path for', uniqueId);
-      }
-    }
-  });
     
     osmLayer.addTo(map);
     
@@ -4651,7 +4634,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
 
 
 
