@@ -15,6 +15,9 @@ const CONNECTION_TIMEOUT = 120000; // 2 minutes (more forgiving)
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData, isPaused }
 const sessions = new Map();
 
+// Persistent storage for flight paths and progress (survives refreshes)
+const persistentFlightData = new Map(); // uniqueId -> { flightPath: [], initialDistance: number, startTime: number }
+
 // Function to get all online aircraft for sharing
 function getOnlineAircraft() {
   const aircraft = [];
@@ -34,7 +37,8 @@ aircraft.push({
         ui_manufacturer: session.lastFlightData.ui_manufacturer || null,
         ui_type: session.lastFlightData.ui_type || null,
         ui_variation: session.lastFlightData.ui_variation || null,
-        flightPath: session.flightPath || [],
+flightPath: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).flightPath : [],
+initialDistance: persistentFlightData.has(uniqueId) ? persistentFlightData.get(uniqueId).initialDistance : null,
         isPaused: session.isPaused || false,
   flightPlanOrigin: session.lastFlightData.flightPlanOrigin || null,
 flightPlanDestination: session.lastFlightData.finalDestination || session.lastFlightData.flightPlanDestination || null,
@@ -245,20 +249,39 @@ else if (data.type === 'flight_data') {
           session.lastFlightData = data.data;
           session.isPaused = data.data.isPaused || false;
           
-          if (!session.flightPath) {
-            session.flightPath = [];
-          }
-          const lat = data.data.latitude;
-          const lon = data.data.longitude;
-          if (lat && lon) {
-            const lastPos = session.flightPath.length > 0 ? session.flightPath[session.flightPath.length - 1] : null;
-            if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
-              session.flightPath.push([lat, lon]);
-            }
-            if (session.flightPath.length > 2000) {
-              session.flightPath.shift();
-            }
-          }
+// Get or create persistent flight data
+if (!persistentFlightData.has(ws.uniqueId)) {
+  persistentFlightData.set(ws.uniqueId, {
+    flightPath: [],
+    initialDistance: null,
+    startTime: Date.now()
+  });
+}
+const persistentData = persistentFlightData.get(ws.uniqueId);
+
+// Update flight path
+const lat = data.data.latitude;
+const lon = data.data.longitude;
+if (lat && lon) {
+  const lastPos = persistentData.flightPath.length > 0 ? persistentData.flightPath[persistentData.flightPath.length - 1] : null;
+  if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
+    persistentData.flightPath.push([lat, lon]);
+  }
+  if (persistentData.flightPath.length > 2000) {
+    persistentData.flightPath.shift();
+  }
+}
+
+// Also keep a reference in session for easy access
+session.flightPath = persistentData.flightPath;
+
+// Track initial distance for progress bar
+if (data.data.totalDistance > 0) {
+  if (persistentData.initialDistance === null || data.data.totalDistance > persistentData.initialDistance) {
+    persistentData.initialDistance = data.data.totalDistance;
+    console.log('Stored initial distance:', persistentData.initialDistance, 'nm for', ws.uniqueId);
+  }
+}
           
 // Track waypoints - build a list as we progress
           if (!session.waypointsList) {
@@ -289,15 +312,21 @@ else if (data.type === 'flight_data') {
             }
           }
           
-          // Store the destination (last waypoint in the list)
-          if (session.waypointsList.length > 0) {
-            session.lastFlightData.finalDestination = session.waypointsList[session.waypointsList.length - 1];
-          }
-          
-          // Fallback to flightPlanDestination if provided
-          if (data.data.flightPlanDestination && !session.lastFlightData.finalDestination) {
-            session.lastFlightData.finalDestination = data.data.flightPlanDestination;
-          }
+// Store the destination (last waypoint in the list)
+if (session.waypointsList.length > 0) {
+  session.lastFlightData.finalDestination = session.waypointsList[session.waypointsList.length - 1];
+}
+
+// Fallback to flightPlanDestination if provided
+if (data.data.flightPlanDestination && !session.lastFlightData.finalDestination) {
+  session.lastFlightData.finalDestination = data.data.flightPlanDestination;
+}
+
+// Clean up persistent data if flight completed
+if (data.data.totalDistance < 5 && persistentData.initialDistance && persistentData.initialDistance > 10) {
+  console.log('Flight completed - clearing persistent data for', ws.uniqueId);
+  persistentFlightData.delete(ws.uniqueId);
+}
         }
         
         const session = sessions.get(ws.uniqueId);
@@ -867,11 +896,7 @@ return `<!DOCTYPE html><html>
         <div class='progress-section'>
             <div class='progress-bar-container'>
                 <div class='progress-bar-fill' id='progressBar' style='width: 0%'></div>
-                <div class='progress-plane' id='progressPlane' style='left: 0%'>
-                    <svg viewBox="0 0 24 24" fill="#FFD700">
-                        <path d="M21 16v-2l-8-5V3.5c0-.83-.67-1.5-1.5-1.5S10 2.67 10 3.5V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5l8 2.5z"/>
-                    </svg>
-                </div>
+<!-- Plane icon removed - was causing positioning issues -->
             </div>
             <div class='progress-info'>
                 <span id='distanceFlown'>--- km</span>
@@ -1260,20 +1285,26 @@ function updateRouteInfo(aircraft) {
 function updateFlightProgress(aircraft) {
     const totalDistance = aircraft.totalDistance || 0; // This is REMAINING distance from sim
     
-    // Store the FIRST distance we see as the "total trip distance"
-    const storageKey = 'initialDistance_' + (aircraft.uniqueId || 'default');
-    
-    if (!window.flightDistances) {
-        window.flightDistances = {};
-    }
-    
-    // Initialize on first update OR if distance increased (new flight plan)
-    if (!window.flightDistances[storageKey] || totalDistance > window.flightDistances[storageKey]) {
-        window.flightDistances[storageKey] = totalDistance;
-        console.log('Initialized flight distance tracking: ' + totalDistance + ' nm');
-    }
-    
-    const initialDistance = window.flightDistances[storageKey];
+// Use server-provided initial distance if available
+let initialDistance = aircraft.initialDistance || 0;
+
+// Fallback to browser storage if server doesn't have it
+if (!initialDistance || initialDistance === 0) {
+  const storageKey = 'initialDistance_' + (aircraft.uniqueId || 'default');
+  
+  if (!window.flightDistances) {
+    window.flightDistances = {};
+  }
+  
+  if (!window.flightDistances[storageKey] || totalDistance > window.flightDistances[storageKey]) {
+    window.flightDistances[storageKey] = totalDistance;
+    console.log('Initialized flight distance tracking: ' + totalDistance + ' nm');
+  }
+  
+  initialDistance = window.flightDistances[storageKey];
+} else {
+  console.log('Using server initial distance:', initialDistance, 'nm');
+}
     let distanceFlown = 0;
     let progressPercent = 0;
     
@@ -1293,7 +1324,7 @@ function updateFlightProgress(aircraft) {
     const progressPlane = document.getElementById('progressPlane');
     
     if (progressBar) progressBar.style.width = progressPercent + '%';
-    if (progressPlane) progressPlane.style.left = progressPercent + '%';
+// Progress plane icon removed
     
     // Update distance displays
     const distanceFlownEl = document.getElementById('distanceFlown');
@@ -4634,6 +4665,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
