@@ -8,9 +8,10 @@ const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
+
 // WebSocket Keep-Alive Configuration
-const HEARTBEAT_INTERVAL = 60000; // 60 seconds (longer interval)
-const CONNECTION_TIMEOUT = 120000; // 2 minutes (more forgiving)
+const HEARTBEAT_INTERVAL = 30000; // 30 seconds - more frequent checks
+const CONNECTION_TIMEOUT = 90000; // 90 seconds - still forgiving but catches issues faster
 
 // Simple session storage: uniqueId -> { pcClient, mobileClients: Set(), password, guestPassword, lastFlightData, isPaused }
 const sessions = new Map();
@@ -870,11 +871,9 @@ return `<!DOCTYPE html><html>
         <!-- NEW: Route Section -->
         <div class='route-section'>
             <div class='route-container'>
-                <div class='airport-box'>
-                    <div class='airport-code' id='departureCode'>---</div>
-                    <div class='airport-time'>SCHEDULED</div>
-                    <div class='airport-actual' id='departureTime'>--:--</div>
-                </div>
+<div class='airport-box'>
+    <div class='airport-code' id='departureCode'>---</div>
+</div>
                 
                 <div class='route-arrow'>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -882,11 +881,9 @@ return `<!DOCTYPE html><html>
                     </svg>
                 </div>
                 
-                <div class='airport-box'>
-                    <div class='airport-code' id='arrivalCode'>---</div>
-                    <div class='airport-time'>ESTIMATED</div>
-                    <div class='airport-actual' id='arrivalTime'>--:--</div>
-                </div>
+<div class='airport-box'>
+    <div class='airport-code' id='arrivalCode'>---</div>
+</div>
             </div>
         </div>
         
@@ -1110,6 +1107,11 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
                 updateFlightProgress(ac);
             }
         }
+        // Stop following when user selects aircraft
+if (followUser && selectedAircraftId !== 'user') {
+    followUser = false;
+    document.getElementById('followUserBtn').textContent = 'Follow Aircraft';
+}
     });
 
     markerMap.forEach((marker, uniqueId) => {
@@ -1242,46 +1244,12 @@ function openPanel(aircraft) {
 }
 
 function updateRouteInfo(aircraft) {
-    // Departure/Destination airports
+    // Only update airport codes, no times
     const depEl = document.getElementById('departureCode');
     const arrEl = document.getElementById('arrivalCode');
     
     if (depEl) depEl.textContent = aircraft.flightPlanOrigin || '---';
     if (arrEl) arrEl.textContent = aircraft.flightPlanDestination || '---';
-    
-    // Use sim time if available, otherwise use real time
-    const currentTime = aircraft.simTime || (Date.now() / 1000);
-    
-    const depTimeEl = document.getElementById('departureTime');
-    const arrTimeEl = document.getElementById('arrivalTime');
-    
-    // DEPARTURE TIME: Use takeoff time (wheels up) if available
-    if (aircraft.takeoffTime && aircraft.takeoffTime > 0) {
-        const departureTime = new Date(aircraft.takeoffTime * 1000);
-        if (depTimeEl) {
-            depTimeEl.textContent = departureTime.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                hour12: false 
-            });
-        }
-    } else {
-        if (depTimeEl) depTimeEl.textContent = '--:--';
-    }
-    
-    // ESTIMATED ARRIVAL: Current sim time + remaining ETE
-    if (aircraft.ete && aircraft.ete > 0) {
-        const estimatedArrival = new Date((currentTime + aircraft.ete) * 1000);
-        if (arrTimeEl) {
-            arrTimeEl.textContent = estimatedArrival.toLocaleTimeString('en-US', { 
-                hour: '2-digit', 
-                minute: '2-digit', 
-                hour12: false 
-            });
-        }
-    } else {
-        if (arrTimeEl) arrTimeEl.textContent = '--:--';
-    }
 }
 
 function updateFlightProgress(aircraft) {
@@ -1328,16 +1296,16 @@ if (!initialDistance || initialDistance === 0) {
     if (progressBar) progressBar.style.width = progressPercent + '%';
 // Progress plane icon removed
     
-    // Update distance displays
-    const distanceFlownEl = document.getElementById('distanceFlown');
-    const distanceRemainingEl = document.getElementById('distanceRemaining');
-    
-    if (distanceFlownEl) {
-        distanceFlownEl.textContent = Math.round(distanceFlown * 1.852) + ' km';
-    }
-    if (distanceRemainingEl) {
-        distanceRemainingEl.textContent = Math.round(totalDistance * 1.852) + ' km';
-    }
+// Update distance displays
+const distanceFlownEl = document.getElementById('distanceFlown');
+const distanceRemainingEl = document.getElementById('distanceRemaining');
+
+if (distanceFlownEl) {
+    distanceFlownEl.textContent = Math.round(distanceFlown) + ' nm';
+}
+if (distanceRemainingEl) {
+    distanceRemainingEl.textContent = Math.round(totalDistance) + ' nm';
+}
     
     // Update time remaining
     const timeRemaining = aircraft.ete || 0;
@@ -4667,6 +4635,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
