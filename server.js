@@ -643,9 +643,9 @@ return `<!DOCTYPE html><html>
             color: #888;
         }
         
-        /* NEW: Route Section */
+/* NEW: Route Section */
         .route-section {
-            padding: 20px;
+            padding: 15px 20px;
             border-bottom: 1px solid #333;
             background: #0d0d0d;
         }
@@ -654,7 +654,7 @@ return `<!DOCTYPE html><html>
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 15px;
+            margin-bottom: 0;
         }
         
         .airport-box {
@@ -663,10 +663,10 @@ return `<!DOCTYPE html><html>
         }
         
         .airport-code {
-            font-size: 24px;
+            font-size: 28px;
             font-weight: bold;
             color: #167fac;
-            margin-bottom: 5px;
+            margin: 0;
         }
         
         .airport-time {
@@ -681,15 +681,15 @@ return `<!DOCTYPE html><html>
             color: #fff;
         }
         
-        .route-arrow {
-            flex: 0 0 60px;
+.route-arrow {
+            flex: 0 0 50px;
             text-align: center;
             color: #167fac;
         }
         
         .route-arrow svg {
-            width: 40px;
-            height: 40px;
+            width: 35px;
+            height: 35px;
         }
         
         /* NEW: Progress Bar */
@@ -975,7 +975,7 @@ function initMap() {
         maxZoom: 19
     });
     
-    const hybridLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+const hybridLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Esri, Maxar, Earthstar Geographics',
         maxZoom: 19
     });
@@ -986,12 +986,13 @@ function initMap() {
         pane: 'shadowPane'
     });
     
-    osmLayer.addTo(map);
+    const satelliteWithLabels = L.layerGroup([hybridLayer, labelsLayer]);
+    satelliteWithLabels.addTo(map);
     
     const baseMaps = {
         "Street Map": osmLayer,
         "Satellite": satelliteLayer,
-        "Satellite + Labels": L.layerGroup([hybridLayer, labelsLayer])
+        "Satellite + Labels": satelliteWithLabels
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -4627,6 +4628,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
