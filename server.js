@@ -33,6 +33,7 @@ aircraft.push({
         heading: session.lastFlightData.heading || 0,
         altitude: session.lastFlightData.altitude || 0,
         groundSpeed: session.lastFlightData.groundSpeed || 0,
+      verticalSpeed: session.lastFlightData.verticalSpeed || 0,  // ← ADD THIS LINE
         atcId: session.lastFlightData.atcId || 'Unknown',
         atcModel: session.lastFlightData.atcModel || session.lastFlightData.atcType || 'Aircraft',
         ui_manufacturer: session.lastFlightData.ui_manufacturer || null,
@@ -4649,6 +4650,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
