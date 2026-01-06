@@ -261,13 +261,14 @@ if (!persistentFlightData.has(ws.uniqueId)) {
 }
 const persistentData = persistentFlightData.get(ws.uniqueId);
 
-// Update flight path
+// Update flight path with altitude
 const lat = data.data.latitude;
 const lon = data.data.longitude;
+const alt = data.data.altitude || 0;
 if (lat && lon) {
   const lastPos = persistentData.flightPath.length > 0 ? persistentData.flightPath[persistentData.flightPath.length - 1] : null;
   if (!lastPos || lastPos[0] !== lat || lastPos[1] !== lon) {
-    persistentData.flightPath.push([lat, lon]);
+    persistentData.flightPath.push([lat, lon, alt]);  // Now storing altitude too
   }
 }
 
@@ -1202,17 +1203,70 @@ function updateFlightPathLine(uniqueId) {
         map.removeLayer(pathLines.get(uniqueId));
     }
 
-    // Create new line
-    const polyline = L.polyline(path, {
-        color: '#00ff00',
-        weight: 3,
-        opacity: 0.7,
-        smoothFactor: 1
-    }).addTo(map);
+    // Create segments with colors based on altitude
+    const segments = [];
+    for (let i = 0; i < path.length - 1; i++) {
+        const start = path[i];
+        const end = path[i + 1];
+        
+        // Get altitude (in feet, stored as 3rd element)
+        const altitudeFeet = start[2] || 0;
+        const altitudeMeters = altitudeFeet * 0.3048;
+        
+        const color = getAltitudeColor(altitudeMeters);
+        
+        const segment = L.polyline([
+            [start[0], start[1]],
+            [end[0], end[1]]
+        ], {
+            color: color,
+            weight: 3,
+            opacity: 0.7
+        }).addTo(map);
+        
+        segments.push(segment);
+    }
 
-    pathLines.set(uniqueId, polyline);
+    // Store all segments as a layer group
+    const layerGroup = L.layerGroup(segments);
+    pathLines.set(uniqueId, layerGroup);
 }
 
+function getAltitudeColor(altitudeMeters) {
+    // Color scale based on altitude in meters
+    if (altitudeMeters < 100) return '#FF0000';        // Red
+    if (altitudeMeters < 200) return '#FF3300';
+    if (altitudeMeters < 300) return '#FF6600';
+    if (altitudeMeters < 400) return '#FF9900';
+    if (altitudeMeters < 600) return '#FFCC00';
+    if (altitudeMeters < 800) return '#FFFF00';        // Yellow
+    if (altitudeMeters < 1000) return '#CCFF00';
+    if (altitudeMeters < 1200) return '#99FF00';
+    if (altitudeMeters < 1500) return '#66FF00';
+    if (altitudeMeters < 2000) return '#33FF00';
+    if (altitudeMeters < 2500) return '#00FF00';       // Green
+    if (altitudeMeters < 3000) return '#00FF33';
+    if (altitudeMeters < 3500) return '#00FF66';
+    if (altitudeMeters < 4000) return '#00FF99';
+    if (altitudeMeters < 4500) return '#00FFCC';
+    if (altitudeMeters < 5000) return '#00FFFF';       // Cyan
+    if (altitudeMeters < 5500) return '#00CCFF';
+    if (altitudeMeters < 6000) return '#0099FF';
+    if (altitudeMeters < 6500) return '#0066FF';
+    if (altitudeMeters < 7000) return '#0033FF';
+    if (altitudeMeters < 7500) return '#0000FF';       // Blue
+    if (altitudeMeters < 8000) return '#3300FF';
+    if (altitudeMeters < 8500) return '#6600FF';
+    if (altitudeMeters < 9000) return '#9900FF';
+    if (altitudeMeters < 9500) return '#CC00FF';
+    if (altitudeMeters < 10000) return '#FF00FF';      // Magenta
+    if (altitudeMeters < 10500) return '#FF00CC';
+    if (altitudeMeters < 11000) return '#FF0099';
+    if (altitudeMeters < 11500) return '#FF0066';
+    if (altitudeMeters < 12000) return '#FF0033';
+    if (altitudeMeters < 12500) return '#FF0000';
+    return '#CC0000';  // Above 13000m - dark red
+}
 
 function openPanel(aircraft) {
     // DON'T automatically pan to aircraft - let user control map freely
@@ -4650,6 +4704,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
