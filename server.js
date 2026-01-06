@@ -2784,13 +2784,21 @@ case 'autopilot_state':
                 document.getElementById('distance').textContent = '--';
             }
             
-            if (data.ete && data.ete > 0) {
-                const hours = Math.floor(data.ete / 3600);
-                const minutes = Math.floor((data.ete % 3600) / 60);
-                document.getElementById('ete').textContent = 'Total ETE: ' + (hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'min');
-            } else {
-                document.getElementById('ete').textContent = 'Total ETE: --';
-            }
+if (data.ete && data.ete > 0) {
+    const hours = Math.floor(data.ete / 3600);
+    const minutes = Math.floor((data.ete % 3600) / 60);
+    
+    // Calculate ETA
+    const now = new Date();
+    const etaTime = new Date(now.getTime() + data.ete * 1000);
+    const etaHours = etaTime.getHours().toString().padStart(2, '0');
+    const etaMinutes = etaTime.getMinutes().toString().padStart(2, '0');
+    const etaString = etaHours + ':' + etaMinutes;
+    
+    document.getElementById('ete').textContent = 'Total ETE: ' + (hours > 0 ? hours + 'h ' + minutes + 'm' : minutes + 'min') + ' (ETA: ' + etaString + ')';
+} else {
+    document.getElementById('ete').textContent = 'Total ETE: --';
+}
 
 // Update header pause button
     const headerPauseBtn = document.getElementById('headerPauseBtn');
@@ -4704,6 +4712,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
