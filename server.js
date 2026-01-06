@@ -739,29 +739,29 @@ return `<!DOCTYPE html><html>
             color: #167fac;
         }
         
-.panel-section {
-    padding: 12px 15px;
-    border-bottom: 1px solid #333;
-}
+        .panel-section {
+            padding: 20px;
+            border-bottom: 1px solid #333;
+        }
         
         .panel-section:last-child {
             border-bottom: none;
         }
         
-.section-title {
-    font-size: 12px;
-    color: #888;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-    font-weight: bold;
-}
+        .section-title {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
         
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 4px 0;
-    border-bottom: 1px solid #222;
-}
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #222;
+        }
         
         .info-row:last-child {
             border-bottom: none;
@@ -986,13 +986,12 @@ function initMap() {
         pane: 'shadowPane'
     });
     
-const satelliteWithLabels = L.layerGroup([hybridLayer, labelsLayer]);
-    satelliteWithLabels.addTo(map);
+    osmLayer.addTo(map);
     
     const baseMaps = {
         "Street Map": osmLayer,
         "Satellite": satelliteLayer,
-        "Satellite + Labels": satelliteWithLabels
+        "Satellite + Labels": L.layerGroup([hybridLayer, labelsLayer])
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -1113,7 +1112,7 @@ if (followUser && selectedAircraftId !== 'user') {
     followUser = false;
     document.getElementById('followUserBtn').textContent = 'Follow Aircraft';
 }
-    });
+});
 
     markerMap.forEach((marker, uniqueId) => {
         if (!activeIds.has(uniqueId)) {
@@ -1137,8 +1136,7 @@ if (followUser && selectedAircraftId !== 'user') {
         }
     });
 
-        // ========== ADD THIS NEW CODE HERE ==========
-    // Update panel data in real-time if a user aircraft is selected
+    // Update panel data in real-time if an aircraft is selected
     if (selectedAircraftId) {
         const selectedAc = allAircraft.find(ac => ac.uniqueId === selectedAircraftId);
         
@@ -1162,6 +1160,17 @@ if (followUser && selectedAircraftId !== 'user') {
                 // Update route and progress information
                 updateRouteInfo(selectedAc);
                 updateFlightProgress(selectedAc);
+                
+                // Update aircraft registration and info
+                const panelRegistrationEl = document.getElementById('panelRegistrationInfo');
+                const panelManufacturerEl = document.getElementById('panelManufacturer');
+                const panelTypeEl = document.getElementById('panelType');
+                const panelVariationEl = document.getElementById('panelVariation');
+
+                if (panelRegistrationEl) panelRegistrationEl.textContent = selectedAc.atcId || '---';
+                if (panelManufacturerEl) panelManufacturerEl.textContent = selectedAc.ui_manufacturer || '---';
+                if (panelTypeEl) panelTypeEl.textContent = selectedAc.atcModel || '---';
+                if (panelVariationEl) panelVariationEl.textContent = selectedAc.ui_variation || '---';
             }
         } else {
             // Selected aircraft no longer exists - close panel
@@ -1169,19 +1178,6 @@ if (followUser && selectedAircraftId !== 'user') {
             selectedAircraftId = null;
         }
     }
-    // ========== END NEW CODE ==========
-    // **ADD THIS RIGHT AFTER THE EXISTING CODE ABOVE:**
-
-// Update aircraft registration and info in panel header
-const panelRegistrationEl = document.getElementById('panelRegistrationInfo');
-const panelManufacturerEl = document.getElementById('panelManufacturer');
-const panelTypeEl = document.getElementById('panelType');
-const panelVariationEl = document.getElementById('panelVariation');
-
-if (panelRegistrationEl) panelRegistrationEl.textContent = selectedAc.atcId || '---';
-if (panelManufacturerEl) panelManufacturerEl.textContent = selectedAc.ui_manufacturer || '---';
-if (panelTypeEl) panelTypeEl.textContent = selectedAc.atcModel || '---';
-if (panelVariationEl) panelVariationEl.textContent = selectedAc.ui_variation || '---';
 }
 
 function toggleFlightPath(uniqueId) {
@@ -4636,8 +4632,6 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
-
-
 
 
 
