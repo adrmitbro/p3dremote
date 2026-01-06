@@ -685,11 +685,15 @@ return `<!DOCTYPE html><html>
             flex: 0 0 50px;
             text-align: center;
             color: #167fac;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .route-arrow svg {
             width: 35px;
             height: 35px;
+            transition: transform 0.5s ease;
         }
         
         /* NEW: Progress Bar */
@@ -1243,6 +1247,23 @@ function updateRouteInfo(aircraft) {
     
     if (depEl) depEl.textContent = aircraft.flightPlanOrigin || '---';
     if (arrEl) arrEl.textContent = aircraft.flightPlanDestination || '---';
+    
+    // Tilt arrow based on vertical speed
+    const arrowEl = document.querySelector('.route-arrow svg');
+    if (arrowEl && aircraft.verticalSpeed !== undefined) {
+        const vs = aircraft.verticalSpeed;
+        let rotation = 0;
+        
+        if (vs > 500) {
+            // Climbing - tilt up (max 20 degrees)
+            rotation = Math.min(20, vs / 100);
+        } else if (vs < -500) {
+            // Descending - tilt down (max -20 degrees)
+            rotation = Math.max(-20, vs / 100);
+        }
+        
+        arrowEl.style.transform = `rotate(${rotation}deg)`;
+    }
 }
 
 function updateFlightProgress(aircraft) {
@@ -4628,6 +4649,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
