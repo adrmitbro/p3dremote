@@ -1262,7 +1262,7 @@ function updateRouteInfo(aircraft) {
             rotation = Math.max(-20, vs / 100);
         }
         
-        arrowEl.style.transform = `rotate(${rotation}deg)`;
+        arrowEl.style.transform = `rotate(${rotation}deg)`;  // ← CHECK THIS LINE!
     }
 }
 
@@ -4649,6 +4649,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
