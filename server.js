@@ -1107,11 +1107,6 @@ if (!lastPos || lastPos[0] !== ac.latitude || lastPos[1] !== ac.longitude) {
                 updateFlightProgress(ac);
             }
         }
-        // Stop following when user selects aircraft
-if (followUser && selectedAircraftId !== 'user') {
-    followUser = false;
-    document.getElementById('followUserBtn').textContent = 'Follow Aircraft';
-}
 });
 
     markerMap.forEach((marker, uniqueId) => {
@@ -4632,6 +4627,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
