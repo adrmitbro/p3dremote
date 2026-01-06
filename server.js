@@ -1232,40 +1232,42 @@ function updateFlightPathLine(uniqueId) {
     pathLines.set(uniqueId, layerGroup);
 }
 
-function getAltitudeColor(altitudeMeters) {
-    // Color scale based on altitude in meters
-    if (altitudeMeters < 100) return '#FF0000';        // Red
-    if (altitudeMeters < 200) return '#FF3300';
-    if (altitudeMeters < 300) return '#FF6600';
-    if (altitudeMeters < 400) return '#FF9900';
-    if (altitudeMeters < 600) return '#FFCC00';
-    if (altitudeMeters < 800) return '#FFFF00';        // Yellow
-    if (altitudeMeters < 1000) return '#CCFF00';
-    if (altitudeMeters < 1200) return '#99FF00';
-    if (altitudeMeters < 1500) return '#66FF00';
-    if (altitudeMeters < 2000) return '#33FF00';
-    if (altitudeMeters < 2500) return '#00FF00';       // Green
-    if (altitudeMeters < 3000) return '#00FF33';
-    if (altitudeMeters < 3500) return '#00FF66';
-    if (altitudeMeters < 4000) return '#00FF99';
-    if (altitudeMeters < 4500) return '#00FFCC';
-    if (altitudeMeters < 5000) return '#00FFFF';       // Cyan
-    if (altitudeMeters < 5500) return '#00CCFF';
-    if (altitudeMeters < 6000) return '#0099FF';
-    if (altitudeMeters < 6500) return '#0066FF';
-    if (altitudeMeters < 7000) return '#0033FF';
-    if (altitudeMeters < 7500) return '#0000FF';       // Blue
-    if (altitudeMeters < 8000) return '#3300FF';
-    if (altitudeMeters < 8500) return '#6600FF';
-    if (altitudeMeters < 9000) return '#9900FF';
-    if (altitudeMeters < 9500) return '#CC00FF';
-    if (altitudeMeters < 10000) return '#FF00FF';      // Magenta
-    if (altitudeMeters < 10500) return '#FF00CC';
-    if (altitudeMeters < 11000) return '#FF0099';
-    if (altitudeMeters < 11500) return '#FF0066';
-    if (altitudeMeters < 12000) return '#FF0033';
-    if (altitudeMeters < 12500) return '#FF0000';
-    return '#CC0000';  // Above 13000m - dark red
+function getAltitudeColor(altitudeFeet) {
+    // Color scale based on altitude in feet (matching your reference image)
+    // Low altitude = Yellow/Green, High altitude = Red/Magenta
+    
+    if (altitudeFeet < 328) return '#FFFF00';        // Yellow - below 100m
+    if (altitudeFeet < 656) return '#CCFF00';        // 200m
+    if (altitudeFeet < 984) return '#99FF00';        // 300m
+    if (altitudeFeet < 1312) return '#66FF00';       // 400m
+    if (altitudeFeet < 1969) return '#33FF00';       // 600m
+    if (altitudeFeet < 2625) return '#00FF00';       // Green - 800m
+    if (altitudeFeet < 3281) return '#00FF33';       // 1000m
+    if (altitudeFeet < 3937) return '#00FF66';       // 1200m
+    if (altitudeFeet < 4921) return '#00FF99';       // 1500m
+    if (altitudeFeet < 6562) return '#00FFCC';       // 2000m
+    if (altitudeFeet < 8202) return '#00FFFF';       // Cyan - 2500m
+    if (altitudeFeet < 9843) return '#00CCFF';       // 3000m
+    if (altitudeFeet < 11483) return '#0099FF';      // 3500m
+    if (altitudeFeet < 13123) return '#0066FF';      // 4000m
+    if (altitudeFeet < 14764) return '#0033FF';      // 4500m
+    if (altitudeFeet < 16404) return '#0000FF';      // Blue - 5000m
+    if (altitudeFeet < 18045) return '#0000CC';      // 5500m
+    if (altitudeFeet < 19685) return '#000099';      // 6000m
+    if (altitudeFeet < 21325) return '#330099';      // 6500m
+    if (altitudeFeet < 22966) return '#6600CC';      // 7000m
+    if (altitudeFeet < 24606) return '#9900CC';      // Purple - 7500m
+    if (altitudeFeet < 26247) return '#CC00CC';      // 8000m
+    if (altitudeFeet < 27887) return '#CC0099';      // 8500m
+    if (altitudeFeet < 29528) return '#FF0099';      // 9000m
+    if (altitudeFeet < 31168) return '#FF0066';      // 9500m
+    if (altitudeFeet < 32808) return '#FF0033';      // Magenta - 10000m
+    if (altitudeFeet < 34449) return '#FF0000';      // 10500m
+    if (altitudeFeet < 36089) return '#CC0000';      // 11000m
+    if (altitudeFeet < 37730) return '#990000';      // 11500m
+    if (altitudeFeet < 39370) return '#CC0000';      // 12000m
+    if (altitudeFeet < 41010) return '#FF0000';      // 12500m
+    return '#FF0000';  // Above 13000m - red
 }
 
 function openPanel(aircraft) {
@@ -4712,6 +4714,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
