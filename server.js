@@ -739,29 +739,29 @@ return `<!DOCTYPE html><html>
             color: #167fac;
         }
         
-        .panel-section {
-            padding: 20px;
-            border-bottom: 1px solid #333;
-        }
+.panel-section {
+    padding: 12px 15px;
+    border-bottom: 1px solid #333;
+}
         
         .panel-section:last-child {
             border-bottom: none;
         }
         
-        .section-title {
-            font-size: 12px;
-            color: #888;
-            text-transform: uppercase;
-            margin-bottom: 12px;
-            font-weight: bold;
-        }
+.section-title {
+    font-size: 12px;
+    color: #888;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: bold;
+}
         
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 8px 0;
-            border-bottom: 1px solid #222;
-        }
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid #222;
+}
         
         .info-row:last-child {
             border-bottom: none;
@@ -986,12 +986,13 @@ function initMap() {
         pane: 'shadowPane'
     });
     
-    osmLayer.addTo(map);
+const satelliteWithLabels = L.layerGroup([hybridLayer, labelsLayer]);
+    satelliteWithLabels.addTo(map);
     
     const baseMaps = {
         "Street Map": osmLayer,
         "Satellite": satelliteLayer,
-        "Satellite + Labels": L.layerGroup([hybridLayer, labelsLayer])
+        "Satellite + Labels": satelliteWithLabels
     };
     
     L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
@@ -4635,6 +4636,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
