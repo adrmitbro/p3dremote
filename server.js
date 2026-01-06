@@ -1257,10 +1257,10 @@ function updateRouteInfo(aircraft) {
         
         if (vs > 500) {
             // Climbing - tilt up (max 20 degrees)
-            rotation = Math.min(20, vs / 100);
+            rotation = Math.min(-20, vs / 100);
         } else if (vs < -500) {
             // Descending - tilt down (max -20 degrees)
-            rotation = Math.max(-20, vs / 100);
+            rotation = Math.max(20, vs / 100);
         }
         
         arrowEl.style.transform = 'rotate(' + rotation + 'deg)';
@@ -4650,6 +4650,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
