@@ -134,11 +134,12 @@ ws.on('message', (message) => {
     try {
       const data = JSON.parse(message);
       
-      // Handle application-level ping if client sends it
-      if (data.type === 'ping') {
-        ws.send(JSON.stringify({ type: 'pong' }));
-        return;
-      }
+// Handle application-level ping if client sends it
+if (data.type === 'ping') {
+    ws.send(JSON.stringify({ type: 'pong' }));
+    console.log(`[${new Date().toISOString()}] Received ping from ${ws.clientType} ${ws.uniqueId}, sent pong`);
+    return;
+}
       
       if (data.type === 'register_pc') {
         // PC registering with unique ID
@@ -4658,6 +4659,7 @@ window.onload = () => {
 server.listen(PORT, () => {
   console.log(`P3D Remote Cloud Relay running on port ${PORT}`);
 });
+
 
 
 
